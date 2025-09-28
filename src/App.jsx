@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Bell, History, Book, Search, BookOpen, Star, X, LogOut } from 'lucide-react';
-
+import { Bell, History, Book, Search, BookOpen, Star, X, LogOut, Trash2, User, Settings, ChevronDown } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
 // CSS Modules styles (inline for demonstration)
 const styles = {
   container: {
@@ -103,20 +103,21 @@ const styles = {
     color: '#9ca3af'
   },
   searchButton: {
-    position: 'absolute',
-    right: '8px',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    backgroundColor: '#6366f1',
-    border: 'none',
-    borderRadius: '50%',
-    width: '32px',
-    height: '32px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    color: 'white'
+  position: 'absolute',
+  right: '8px',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  backgroundColor: '#6366f1',
+  border: 'none',
+  borderRadius: '20px',
+  padding: '6px 16px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  color: 'white',
+  fontSize: '14px',
+  fontWeight: '500'
   },
   userProfile: {
     display: 'flex',
@@ -253,7 +254,7 @@ const styles = {
     padding: '20px',
     borderBottom: '1px solid #e5e7eb',
     display: 'grid',
-    gridTemplateColumns: '2fr 1fr 1fr 1fr',
+    gridTemplateColumns: '2fr 1fr 1fr 1fr 100px',
     gap: '16px',
     fontSize: '14px',
     fontWeight: '600',
@@ -263,7 +264,7 @@ const styles = {
     padding: '20px',
     borderBottom: '1px solid #f3f4f6',
     display: 'grid',
-    gridTemplateColumns: '2fr 1fr 1fr 1fr',
+    gridTemplateColumns: '2fr 1fr 1fr 1fr 100px',
     gap: '16px',
     fontSize: '14px',
     alignItems: 'center'
@@ -316,21 +317,21 @@ const styles = {
     color: 'white',
     textAlign: 'center'
   },
-  closeButton: {
-    position: 'absolute',
-    top: '20px',
-    right: '20px',
-    background: 'rgba(255, 255, 255, 0.2)',
-    border: 'none',
-    borderRadius: '50%',
-    width: '36px',
-    height: '36px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    color: 'white'
-  },
+closeButton: {
+  position: "absolute",
+  top: "10px",
+  right: "10px",
+  background: "transparent", // trong suốt
+  border: "none",            // bỏ viền
+  cursor: "pointer",         // trỏ chuột
+  color: "white",            // màu icon X
+  fontSize: "20px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  transition: "transform 0.2s ease, color 0.2s ease",
+},
+
   bookCoverModal: {
     width: '160px',
     height: '220px',
@@ -413,6 +414,88 @@ const styles = {
     gap: '8px',
     margin: '0 auto',
     transition: 'transform 0.2s ease'
+  },
+deleteButton: {
+  backgroundColor: 'transparent',      // mặc định trong suốt
+  border: '2px solid #ef4444',         // viền đỏ
+  borderRadius: '6px',                 // bo góc vuông nhẹ
+  padding: '6px 12px',                 // padding rộng để chứa chữ
+  display: 'flex',
+  alignItems: 'center',
+  gap: '6px',                          // khoảng cách icon và chữ
+  cursor: 'pointer',
+  color: '#ef4444',                    // màu chữ + icon
+  fontSize: '14px',
+  fontWeight: '500',
+  transition: 'all 0.2s ease'
+},
+deleteButtonHover: {
+  backgroundColor: '#ef4444',          // hover: nền đỏ
+  color: 'white',                      // chữ + icon thành trắng
+  transform: 'scale(1.05)',
+  boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+},
+
+  profileDropdown: {
+    position: 'relative'
+  },
+  avatarContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    cursor: 'pointer',
+    padding: '8px 12px',
+    borderRadius: '12px',
+    transition: 'background-color 0.2s ease'
+  },
+  avatarContainerHover: {
+    backgroundColor: '#f3f4f6'
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: '100%',
+    right: 0,
+    marginTop: '8px',
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+    border: '1px solid #e5e7eb',
+    padding: '8px',
+    minWidth: '200px',
+    zIndex: 1000
+  },
+  dropdownItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '12px 16px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s ease',
+    fontSize: '14px',
+    color: '#374151'
+  },
+  dropdownItemHover: {
+    backgroundColor: '#f3f4f6'
+  },
+  dropdownDivider: {
+    height: '1px',
+    backgroundColor: '#e5e7eb',
+    margin: '8px 0'
+  },
+  profileInfo: {
+    padding: '12px 16px',
+    borderBottom: '1px solid #e5e7eb',
+    marginBottom: '8px'
+  },
+  profileName: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#111827'
+  },
+  profileEmail: {
+    fontSize: '14px',
+    color: '#6b7280'
   }
 };
 
@@ -421,7 +504,13 @@ const UserLibrary = () => {
   const [hoveredNavItem, setHoveredNavItem] = useState(null);
   const [selectedBook, setSelectedBook] = useState(null);
   const [hoveredLogout, setHoveredLogout] = useState(false);
-
+  const [books, setBooks] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [borrowHistory, setBorrowHistory] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [hoveredDeleteButton, setHoveredDeleteButton] = useState(null);
+  const navigate = useNavigate();
   const bookColors = [
     'linear-gradient(135deg, #ff6b9d, #f06292)',
     'linear-gradient(135deg, #667eea, #764ba2)', 
@@ -431,87 +520,81 @@ const UserLibrary = () => {
     'linear-gradient(135deg, #fdcb6e, #e17055)'
   ];
 
-  const availableBooks = [
-    { 
-      id: 1, 
-      title: 'Tâm lý học đám đông', 
-      author: 'Gustave Le Bon', 
-      color: bookColors[0],
-      pages: 320,
-      rating: 4.5,
-      reviews: 845,
-      status: 'available',
-      description: 'Cuốn sách này khám phá tâm lý của đám đông và cách thức họ hành xử khác biệt so với cá nhân.'
-    },
-    { 
-      id: 2, 
-      title: 'Đắc nhân tâm', 
-      author: 'Dale Carnegie', 
-      color: bookColors[1],
-      pages: 320,
-      rating: 4.8,
-      reviews: 1205,
-      status: 'available',
-      description: 'Một trong những cuốn sách kinh điển về kỹ năng giao tiếp và ứng xử.'
-    },
-    { 
-      id: 3, 
-      title: 'Sapiens', 
-      author: 'Yuval Noah Harari', 
-      color: bookColors[2],
-      pages: 512,
-      rating: 4.7,
-      reviews: 967,
-      status: 'borrowed',
-      description: 'Cuốn sách khám phá lịch sử loài người từ thời tiền sử đến hiện đại.'
-    },
-    { 
-      id: 4, 
-      title: 'Atomic Habits', 
-      author: 'James Clear', 
-      color: bookColors[3],
-      pages: 285,
-      rating: 4.9,
-      reviews: 1456,
-      status: 'available',
-      description: 'Hệ thống thực tế để xây dựng thói quen tốt và loại bỏ thói quen xấu.'
-    },
-    { 
-      id: 5, 
-      title: 'Think and Grow Rich', 
-      author: 'Napoleon Hill', 
-      color: bookColors[4],
-      pages: 400,
-      rating: 4.6,
-      reviews: 2340,
-      status: 'available',
-      description: 'Cuốn sách kinh điển về thành công và làm giàu, dựa trên nghiên cứu 20 năm.'
-    },
-    { 
-      id: 6, 
-      title: 'The 7 Habits', 
-      author: 'Stephen Covey', 
-      color: bookColors[5],
-      pages: 380,
-      rating: 4.7,
-      reviews: 1876,
-      status: 'available',
-      description: '7 thói quen của những người hiệu quả cao, phát triển tính cách và nguyên tắc.'
-    }
-  ];
-
-  const notifications = [
-    { id: 1, title: 'Sách sắp hết hạn', desc: '"Sapiens" - Hạn trả: 25/09/2024', time: '1 ngày trước' },
-    { id: 2, title: 'Có sách mới', desc: '"The Psychology of Money" đã có sẵn', time: '2 ngày trước' },
-    { id: 3, title: 'Thông báo hệ thống', desc: 'Thư viện sẽ đóng cửa vào ngày 30/09', time: '3 ngày trước' }
-  ];
-
-  const borrowHistory = [
-    { id: 1, bookTitle: 'Sapiens', borrowDate: '10/09/2024', dueDate: '25/09/2024', status: 'Đang mượn' },
-    { id: 2, bookTitle: 'Tâm lý học đám đông', borrowDate: '28/08/2024', dueDate: '12/09/2024', status: 'Đã trả' },
-    { id: 3, bookTitle: 'Đắc nhân tâm', borrowDate: '15/08/2024', dueDate: '30/08/2024', status: 'Đã trả' },
-    { id: 4, bookTitle: 'Atomic Habits', borrowDate: '01/08/2024', dueDate: '16/08/2024', status: 'Đã trả' }
-  ];
+  // Initialize data on component mount
+  React.useEffect(() => {
+    const initialBooks = [
+      { 
+        id: 1, 
+        title: 'Tâm lý học đám đông', 
+        author: 'Gustave Le Bon', 
+        color: bookColors[0],
+        pages: 320,
+        rating: 4.5,
+        reviews: 845,
+        status: 'available',
+        description: 'Cuốn sách này khám phá tâm lý của đám đông và cách thức họ hành xử khác biệt so với cá nhân.'
+      },
+      { 
+        id: 2, 
+        title: 'Đắc nhân tâm', 
+        author: 'Dale Carnegie', 
+        color: bookColors[1],
+        pages: 320,
+        rating: 4.8,
+        reviews: 1205,
+        status: 'available',
+        description: 'Một trong những cuốn sách kinh điển về kỹ năng giao tiếp và ứng xử.'
+      },
+      { 
+        id: 3, 
+        title: 'Sapiens', 
+        author: 'Yuval Noah Harari', 
+        color: bookColors[2],
+        pages: 512,
+        rating: 4.7,
+        reviews: 967,
+        status: 'available',
+        description: 'Cuốn sách khám phá lịch sử loài người từ thời tiền sử đến hiện đại.'
+      },
+      { 
+        id: 4, 
+        title: 'Atomic Habits', 
+        author: 'James Clear', 
+        color: bookColors[3],
+        pages: 285,
+        rating: 4.9,
+        reviews: 1456,
+        status: 'available',
+        description: 'Hệ thống thực tế để xây dựng thói quen tốt và loại bỏ thói quen xấu.'
+      },
+      { 
+        id: 5, 
+        title: 'Think and Grow Rich', 
+        author: 'Napoleon Hill', 
+        color: bookColors[4],
+        pages: 400,
+        rating: 4.6,
+        reviews: 2340,
+        status: 'available',
+        description: 'Cuốn sách kinh điển về thành công và làm giàu, dựa trên nghiên cứu 20 năm.'
+      },
+      { 
+        id: 6, 
+        title: 'The 7 Habits', 
+        author: 'Stephen Covey', 
+        color: bookColors[5],
+        pages: 380,
+        rating: 4.7,
+        reviews: 1876,
+        status: 'available',
+        description: '7 thói quen của những người hiệu quả cao, phát triển tính cách và nguyên tắc.'
+      }
+    ];
+    
+    setBooks(initialBooks);
+    setNotifications([]);
+    setBorrowHistory([]);
+  }, []);
 
   const navItems = [
     { id: 'books', label: 'Thư viện sách', icon: Book },
@@ -528,11 +611,91 @@ const UserLibrary = () => {
   };
 
   const handleLogout = () => {
-    alert('Chuyển về trang login.jsx');
+    // Xóa token/session nếu có
+    localStorage.removeItem("token");
+
+    // Chuyển hướng về trang đăng nhập
+    navigate("/");
+  }
+
+  const handleSearch = () => {
+    // Logic tìm kiếm sẽ được thực hiện thông qua filteredBooks
+  };
+
+  const handleDeleteNotification = (notificationId) => {
+    setNotifications(prevNotifications => 
+      prevNotifications.filter(notification => notification.id !== notificationId)
+    );
+  };
+
+  const handleDeleteHistory = (historyId) => {
+    setBorrowHistory(prevHistory => 
+      prevHistory.filter(history => history.id !== historyId)
+    );
+  };
+
+  const handleProfileClick = () => {
+    setShowProfileDropdown(!showProfileDropdown);
+  };
+
+  const handleProfileAction = (action) => {
+    setShowProfileDropdown(false);
+    switch(action) {
+      case 'profile':
+        alert('Chuyển đến trang Profile - user-profile.jsx');
+        // window.location.href = '/profile' hoặc navigate('/profile')
+        break;
+      case 'settings':
+        alert('Chuyển đến trang cài đặt');
+        break;
+      case 'logout':
+        handleLogout();
+        break;
+      default:
+        break;
+    }
   };
 
   const handleBorrowBook = () => {
-    alert(`Mượn sách "${selectedBook.title}" thành công!`);
+    const currentDate = new Date();
+    const borrowDate = currentDate.toLocaleDateString('vi-VN');
+    
+    // Tính ngày hết hạn (15 ngày sau)
+    const dueDate = new Date();
+    dueDate.setDate(currentDate.getDate() + 15);
+    const dueDateString = dueDate.toLocaleDateString('vi-VN');
+    
+    // Cập nhật trạng thái sách thành "borrowed"
+    setBooks(prevBooks => 
+      prevBooks.map(book => 
+        book.id === selectedBook.id 
+          ? { ...book, status: 'borrowed' }
+          : book
+      )
+    );
+    
+    // Thêm thông báo mới
+    const newNotification = {
+      id: Date.now(),
+      title: 'Mượn sách thành công',
+      desc: `"${selectedBook.title}" - Hạn trả: ${dueDateString}`,
+      time: 'Vừa xong'
+    };
+    
+    setNotifications(prevNotifications => [newNotification, ...prevNotifications]);
+    
+    // Thêm vào lịch sử mượn
+    const newHistoryRecord = {
+      id: Date.now(),
+      bookTitle: selectedBook.title,
+      borrowDate: borrowDate,
+      dueDate: dueDateString,
+      status: 'Đang mượn'
+    };
+    
+    setBorrowHistory(prevHistory => [newHistoryRecord, ...prevHistory]);
+    
+    alert(`Mượn sách "${selectedBook.title}" thành công! Hạn trả: ${dueDateString}`);
     setSelectedBook(null);
   };
 
@@ -564,14 +727,25 @@ const UserLibrary = () => {
     }
   };
 
+  // Lọc sách theo từ khóa tìm kiếm
+  const filteredBooks = books.filter(book => 
+    book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    book.author.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'books':
         return (
           <>
             <h1 style={styles.pageTitle}>Thư viện sách</h1>
+            {searchTerm && (
+              <div style={{ marginBottom: '24px', fontSize: '16px', color: '#6b7280' }}>
+                Kết quả tìm kiếm cho: "<strong>{searchTerm}</strong>" ({filteredBooks.length} kết quả)
+              </div>
+            )}
             <div style={styles.booksGrid}>
-              {availableBooks.map((book) => (
+              {filteredBooks.map((book) => (
                 <div 
                   key={book.id} 
                   style={styles.bookCard}
@@ -593,6 +767,17 @@ const UserLibrary = () => {
                 </div>
               ))}
             </div>
+            {filteredBooks.length === 0 && searchTerm && (
+              <div style={{
+                textAlign: 'center',
+                padding: '60px 20px',
+                color: '#6b7280',
+                fontSize: '16px'
+              }}>
+                <Search size={48} color="#d1d5db" />
+                <div style={{ marginTop: '16px' }}>Không tìm thấy sách nào phù hợp</div>
+              </div>
+            )}
           </>
         );
 
@@ -600,13 +785,44 @@ const UserLibrary = () => {
         return (
           <>
             <h1 style={styles.pageTitle}>Thông báo</h1>
-            {notifications.map(notification => (
-              <div key={notification.id} style={styles.notificationItem}>
-                <div style={styles.notificationTitle}>{notification.title}</div>
-                <div style={styles.notificationDesc}>{notification.desc}</div>
-                <div style={styles.notificationTime}>{notification.time}</div>
+            {notifications.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '60px 20px',
+                color: '#6b7280',
+                fontSize: '16px'
+              }}>
+                <Bell size={48} color="#d1d5db" />
+                <div style={{ marginTop: '16px' }}>Chưa có thông báo nào</div>
               </div>
-            ))}
+            ) : (
+              notifications.map(notification => (
+                <div key={notification.id} style={{
+                  ...styles.notificationItem,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start'
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={styles.notificationTitle}>{notification.title}</div>
+                    <div style={styles.notificationDesc}>{notification.desc}</div>
+                    <div style={styles.notificationTime}>{notification.time}</div>
+                  </div>
+                  <button
+                    style={{
+                      ...styles.deleteButton,
+                      ...(hoveredDeleteButton === notification.id ? styles.deleteButtonHover : {})
+                    }}
+                    onClick={() => handleDeleteNotification(notification.id)}
+                    onMouseEnter={() => setHoveredDeleteButton(notification.id)}
+                    onMouseLeave={() => setHoveredDeleteButton(null)}
+                    title="Xóa thông báo"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))
+            )}
           </>
         );
 
@@ -614,27 +830,54 @@ const UserLibrary = () => {
         return (
           <>
             <h1 style={styles.pageTitle}>Lịch sử mượn trả sách</h1>
-            <div style={styles.historyTable}>
-              <div style={styles.tableHeader}>
-                <div>Tên sách</div>
-                <div>Ngày mượn</div>
-                <div>Hạn trả</div>
-                <div>Trạng thái</div>
+            {borrowHistory.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '60px 20px',
+                color: '#6b7280',
+                fontSize: '16px'
+              }}>
+                <History size={48} color="#d1d5db" />
+                <div style={{ marginTop: '16px' }}>Chưa có lịch sử mượn sách</div>
               </div>
-              
-              {borrowHistory.map(record => (
-                <div key={record.id} style={styles.tableRow}>
-                  <div style={{ fontWeight: '600', color: '#111827' }}>{record.bookTitle}</div>
-                  <div>{record.borrowDate}</div>
-                  <div>{record.dueDate}</div>
-                  <div>
-                    <span style={getStatusStyle(record.status === 'Đã trả' ? 'available' : 'borrowed')}>
-                      {record.status}
-                    </span>
-                  </div>
+            ) : (
+              <div style={styles.historyTable}>
+                <div style={styles.tableHeader}>
+                  <div>Tên sách</div>
+                  <div>Ngày mượn</div>
+                  <div>Hạn trả</div>
+                  <div>Trạng thái</div>
+                  <div>Thao tác</div>
                 </div>
-              ))}
-            </div>
+                
+                {borrowHistory.map(record => (
+                  <div key={record.id} style={styles.tableRow}>
+                    <div style={{ fontWeight: '600', color: '#111827' }}>{record.bookTitle}</div>
+                    <div>{record.borrowDate}</div>
+                    <div>{record.dueDate}</div>
+                    <div>
+                      <span style={getStatusStyle(record.status === 'Đã trả' ? 'available' : 'borrowed')}>
+                        {record.status}
+                      </span>
+                    </div>
+                    <div>
+                      <button
+                        style={{
+                          ...styles.deleteButton,
+                          ...(hoveredDeleteButton === record.id ? styles.deleteButtonHover : {})
+                        }}
+                        onClick={() => handleDeleteHistory(record.id)}
+                        onMouseEnter={() => setHoveredDeleteButton(record.id)}
+                        onMouseLeave={() => setHoveredDeleteButton(null)}
+                        title="Xóa lịch sử"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         );
 
@@ -653,6 +896,20 @@ const UserLibrary = () => {
       boxSizing: 'border-box'
     }}>
       <div style={styles.container}>
+        {/* Click outside to close dropdown */}
+        {showProfileDropdown && (
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 999
+            }}
+            onClick={() => setShowProfileDropdown(false)}
+          />
+        )}
         {/* Sidebar */}
         <div style={styles.sidebar}>
           <div style={styles.logo}>
@@ -714,8 +971,11 @@ const UserLibrary = () => {
                 type="text"
                 placeholder="Tìm kiếm sách, tác giả..."
                 style={styles.searchBar}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               />
-              <button style={styles.searchButton}>
+              <button style={styles.searchButton} onClick={handleSearch}>
                 <Search size={16} />
               </button>
             </div>
@@ -723,9 +983,9 @@ const UserLibrary = () => {
             <div style={styles.userProfile}>
               <div style={styles.notificationIcon}>
                 <Bell size={24} color="#6b7280" />
-                <div style={styles.notificationBadge}>3</div>
+                <div style={styles.notificationBadge}>1</div>
               </div>
-              <div style={styles.avatar}>US</div>
+              <div style={styles.avatar}>A</div>
             </div>
           </header>
 
@@ -739,8 +999,13 @@ const UserLibrary = () => {
         {selectedBook && (
           <div style={styles.modalOverlay} onClick={handleCloseModal}>
             <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-              <button style={styles.closeButton} onClick={handleCloseModal}>
-                <X size={20} />
+              <button
+                style={styles.closeButton}
+                onClick={handleCloseModal}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#ff4d4f")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "white")}
+              >
+              <X size={20} />
               </button>
               
               <div style={styles.bookCoverModal}>

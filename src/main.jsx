@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./login.jsx";
 import App from "./App.jsx";          // Trang cho User
 import Librarian from "./Librarian.jsx";
+import Admin from "./Admin.jsx"; 
 {/*import Admin from "./Admin.jsx";      // Trang cho Admin
 import Librarian from "./Librarian.jsx"; // Trang cho Librarian*/}
 
@@ -23,6 +24,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         {/* Trang chính sau login */}
         <Route path="/app" element={<App />} />
         <Route path="/librarian" element={<Librarian />} />
+        <Route path="/admin" element={<Admin />} />
  {/*       <Route path="/admin" element={<Admin />} />
         <Route path="/librarian" element={<Librarian />} />*/}
       </Routes>
