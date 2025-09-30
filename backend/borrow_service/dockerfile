@@ -1,0 +1,20 @@
+# Sử dụng Python chính thức, nhẹ
+FROM python:3.11-slim
+
+# Thiết lập thư mục làm việc trong container
+WORKDIR /app
+
+# Copy file requirements trước để tận dụng cache layer
+COPY requirements.txt .
+
+# Cài đặt dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy toàn bộ source code vào container
+COPY . .
+
+# Expose cổng mà FastAPI sẽ chạy
+EXPOSE 8002
+
+# Chạy ứng dụng với Uvicorn
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]

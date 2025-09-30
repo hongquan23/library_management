@@ -1,0 +1,130 @@
+version: "3.9"
+
+services:
+  # =========================
+  # PostgreSQL Database
+  # ========================
+  postgres:
+    image: postgres:15
+    container_name: postgres_lib
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_lib:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app_network
+
+  # =========================
+  # Alembic Migration Service
+  # =========================
+  migration:
+    build:
+      context: ./backend/shared
+      dockerfile: Dockerfile
+    container_name: alembic_migration
+    command: >
+      sh -c "alembic -c /app/shared/alembic.ini upgrade head"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - postgres
+    environment:
+      PYTHONPATH: /app
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    networks:
+      - app_network
+
+  # =========================
+  # User Service
+  # =========================
+  user_service:
+    image: user_service  # <-- Sử dụng image đã build sẵn
+    container_name: user_service
+    command: >
+      sh -c "uvicorn user_service.app.main:app --host 0.0.0.0 --port 8000 --reload"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      PYTHONPATH: /app
+
+    volumes:
+    - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - migration
+    networks:
+      - app_network
+
+  book_service:
+    image: book_service  # <-- Sử dụng image đã build sẵn
+    container_name: book_service
+    command: >
+      sh -c "uvicorn book_service.app.main:app --host 0.0.0.0 --port 8001 --reload"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      PYTHONPATH: /app
+
+    volumes:
+    - ./backend:/app
+    ports:
+      - "8001:8001"
+    depends_on:
+      - postgres
+      - migration
+    networks:
+      - app_network
+
+
+  borrow_service:
+    image: borrow_service  # <-- Sử dụng image đã build sẵn
+    container_name: borrow_service
+    command: >
+      sh -c "uvicorn borrow_service.app.main:app --host 0.0.0.0 --port 8002 --reload"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      PYTHONPATH: /app
+
+    volumes:
+    - ./backend:/app
+    ports:
+      - "8002:8002"
+    depends_on:
+      - postgres
+      - migration
+    networks:
+      - app_network
+
+
+  notification_service:
+    image: notification_service  # <-- Sử dụng image đã build sẵn
+    container_name: notification_service
+    command: >
+      sh -c "uvicorn notification_service.app.main:app --host 0.0.0.0 --port 8003 --reload"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      PYTHONPATH: /app
+
+    volumes:
+    - ./backend:/app
+    ports:
+      - "8003:8003"
+    depends_on:
+      - postgres
+      - migration
+    networks:
+      - app_network
+# =========================
+# Volumes & Networks
+# =========================
+volumes:
+  postgres_lib:
+
+networks:
+  app_network:
+    driver: bridge

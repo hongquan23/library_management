@@ -1,0 +1,9 @@
+# Database
+SQLAlchemy==2.0.30
+psycopg2-binary==2.9.9
+
+# Alembic for migration
+alembic==1.13.2
+
+# Optional: for loading environment variables
+python-dotenv==1.0.1

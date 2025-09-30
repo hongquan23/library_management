@@ -1,0 +1,17 @@
+# Dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+
+# Copy file requirements (nếu có)
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy toàn bộ code của shared
+COPY . .
+
+# Lệnh mặc định để chạy (có thể override bằng docker-compose command)
+CMD ["alembic", "-c", "alembic.ini", "upgrade", "head"]
+
