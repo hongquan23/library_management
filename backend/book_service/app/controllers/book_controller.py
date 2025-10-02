@@ -1,8 +1,8 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
-from shared.schemas.book import BookCreate, BookUpdate, BookOut
+from shared.schemas.book import BookOut, BookCreate, BookUpdate
 from ..services.book_service import BookService
 
 
@@ -23,12 +23,41 @@ class BookController:
         return BookService.search_books(db, keyword)
 
     @staticmethod
-    def create(book_data: BookCreate, db: Session) -> BookOut:
-        return BookService.create_book(db, book_data)
+    def create(
+        title: str,
+        author: str,
+        published_year: Optional[int],
+        available_copies: Optional[int],
+        image: Optional[UploadFile],
+        db: Session
+    ) -> BookOut:
+        # build schema
+        book_data = BookCreate(
+            title=title,
+            author=author,
+            published_year=published_year,
+            available_copies=available_copies,
+        )
+        return BookService.create_book(db, book_data, image)
 
     @staticmethod
-    def update(book_id: int, update_data: BookUpdate, db: Session) -> BookOut:
-        book = BookService.update_book(db, book_id, update_data)
+    def update(
+        book_id: int,
+        title: Optional[str],
+        author: Optional[str],
+        published_year: Optional[int],
+        available_copies: Optional[int],
+        image: Optional[UploadFile],
+        db: Session
+    ) -> BookOut:
+        # build schema
+        update_data = BookUpdate(
+            title=title,
+            author=author,
+            published_year=published_year,
+            available_copies=available_copies,
+        )
+        book = BookService.update_book(db, book_id, update_data, image)
         if not book:
             raise HTTPException(status_code=404, detail="Book not found")
         return book

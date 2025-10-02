@@ -11,3 +11,7 @@ class UserController:
     @staticmethod
     def login_user(db: Session, login_data: UserLogin):
         return UserService.login_user(db, login_data.email, login_data.password)
+
+    @staticmethod
+    def reset_password(db: Session, email: str, new_password: str):
+        return UserService.reset_password(db, email, new_password)

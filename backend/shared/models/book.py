@@ -13,6 +13,8 @@ class Book(Base):
     published_year = Column(Integer, nullable=True)
     available_copies = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
+    image = Column(String, nullable=True)
+
 
     # Một sách có thể có nhiều lượt mượn
     borrow_records = relationship("BorrowRecord", back_populates="book")

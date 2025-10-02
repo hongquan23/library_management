@@ -21,4 +21,6 @@ export const notificationApi = axios.create({
 
 export  const registerUser = (data) => userApi.post("/users/register", data);   
 export  const loginUser = (data) => userApi.post("/users/login", data);
-
+export const resetPassword = async(data) => {
+  return await userApi.post("/users/reset-password",data);
+}

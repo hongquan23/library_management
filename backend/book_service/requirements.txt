@@ -19,3 +19,5 @@ starlette==0.38.4
 
 # Optional: Debugging & Dev tools
 python-dotenv==1.0.1
+
+python-multipart

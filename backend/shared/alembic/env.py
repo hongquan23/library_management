@@ -15,7 +15,7 @@ target_metadata = Base.metadata
 config = context.config
 
 # Dùng DATABASE_URL từ env nếu có
-db_url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+db_url = config.get_main_option("sqlalchemy.url")
 config.set_main_option("sqlalchemy.url", db_url)
 
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from shared.schemas.user import UserCreate, UserLogin, UserResponse
+from shared.schemas.user import UserCreate, UserLogin, UserResponse, ResetPasswordRequest
 from shared.database.session import get_db
 from ..controllers.user_controller import UserController
 
@@ -15,3 +15,8 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
 @router.post("/login")
 def login_user(login_data: UserLogin, db: Session = Depends(get_db)):
     return UserController.login_user(db, login_data)
+
+@router.post("/reset-password")
+def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+    return UserController.reset_password(db, data.email, data.new_password)
+

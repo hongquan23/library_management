@@ -4,10 +4,11 @@ from typing import Optional
 
 # ==== Base Schema ====
 class BookBase(BaseModel):
-    title:  Optional[str] = None
-    author: str
-    available_copies: int
-    published_year: int
+    title: Optional[str] = None
+    author: Optional[str] = None
+    available_copies: Optional[int] = None
+    published_year: Optional[int] = None
+    image: Optional[str] = None   # thêm trường image
 
 # ==== Create Schema ====
 class BookCreate(BookBase):
@@ -19,6 +20,7 @@ class BookUpdate(BaseModel):
     author: Optional[str] = None
     published_year: Optional[int] = None
     available_copies: Optional[int] = None
+    image: Optional[str] = None   # cho phép update image
 
 # ==== Output Schema ====
 class BookOut(BookBase):

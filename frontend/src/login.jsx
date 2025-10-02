@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import styles from "./login.module.css"; // ✅ dùng CSS Module
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { registerUser, loginUser } from "./api"; // ✅ import API
+import { registerUser, loginUser, resetPassword } from "./api"; // ✅ import API
 
 // Component PasswordInput dùng chung
 const PasswordInput = ({ value, onChange, placeholder, show, toggleShow }) => (
@@ -109,13 +109,18 @@ const handleSignIn = async (e) => {
     const response = await loginUser(loginData);
     const { access_token } = response.data;
 
-    // Lưu token và role vào localStorage
-    localStorage.setItem("token", access_token);
-
     // Giải mã token để lấy role
     const decoded = JSON.parse(atob(access_token.split(".")[1]));
     const userRole = decoded.role;
 
+    // So sánh role người nhập với role trong DB
+    if (userRole !== role) {
+      alert("Role không khớp! Đăng nhập thất bại.");
+      return;
+    }
+
+    // Lưu token và role vào localStorage
+    localStorage.setItem("token", access_token);
     localStorage.setItem("role", userRole);
 
     alert("Đăng nhập thành công!");
@@ -127,30 +132,34 @@ const handleSignIn = async (e) => {
 };
 
 
-  // Quên mật khẩu
-  const handleForgotPassword = (e) => {
-    e.preventDefault();
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (!user) {
-      alert("Chưa có tài khoản để khôi phục!");
-      return;
-    }
-    if (resetEmail === user.email) {
-      if (newPassword.length < 6) {
-        alert("Mật khẩu mới phải có ít nhất 6 ký tự!");
-        return;
-      }
-      user.password = newPassword;
-      localStorage.setItem("user", JSON.stringify(user));
-      alert("Mật khẩu đã được thay đổi thành công!");
-      setForgotMode(false);
-      setNewPassword("");
-      setResetEmail("");
-    } else {
-      alert("Email không khớp!");
-    }
-  };
 
+  // Quên mật khẩu
+  const handleForgotPassword = async (e) => {
+  e.preventDefault();
+
+  if (newPassword.length < 8) {
+    alert("Mật khẩu mới phải có ít nhất 8 ký tự!");
+    return;
+  }
+
+  try {
+    const data = {
+      email: resetEmail,
+      new_password: newPassword,
+    };
+
+    const response = await resetPassword(data);
+    alert(response.data?.message || "Mật khẩu đã được thay đổi thành công!");
+
+    // Reset state
+    setForgotMode(false);
+    setNewPassword("");
+    setResetEmail("");
+  } catch (error) {
+    console.error("Đổi mật khẩu lỗi:", error);
+    alert(error.response?.data?.detail || "Đổi mật khẩu thất bại!");
+  }
+};
   return (
     <div className={styles.container} id="container">
       {/* Form Đăng ký */}
@@ -257,7 +266,7 @@ const handleSignIn = async (e) => {
             <PasswordInput
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="New Password (min 6 chars)"
+              placeholder="New Password (min 8 chars)"
               show={showNewPassword}
               toggleShow={() => setShowNewPassword(!showNewPassword)}
             />

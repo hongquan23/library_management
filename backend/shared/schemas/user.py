@@ -26,6 +26,10 @@ class UserUpdate(BaseModel):
     password: Optional[str] = Field(None, min_length=8)
     role: Optional[UserRole] = None
 
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    new_password: str = Field(..., min_length=8)
+
 class UserResponse(UserBase):  # <-- Thêm mới ở đây
     id: int
     created_at: datetime

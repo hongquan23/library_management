@@ -33,3 +33,23 @@ class UserService:
         token = create_access_token(data={"sub": user.email, "role": user.role.value})
 
         return {"access_token": token, "token_type": "bearer"}
+
+
+    @staticmethod
+    def reset_password(db: Session, email: str, new_password: str):
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        if len(new_password) < 8:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must be at least 8 characters"
+            )
+
+        user.hashed_password = hash_password(new_password)
+        db.commit()
+        db.refresh(user)
+        return {"msg": "Password updated successfully"}
