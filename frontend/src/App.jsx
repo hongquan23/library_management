@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Bell, History, Book, Search, BookOpen, Star, X, LogOut, Trash2, User, Settings, ChevronDown } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
+import { getBooks } from "./api";
+
 // CSS Modules styles (inline for demonstration)
 const styles = {
   container: {
@@ -521,80 +523,35 @@ const UserLibrary = () => {
   ];
 
   // Initialize data on component mount
-  React.useEffect(() => {
-    const initialBooks = [
-      { 
-        id: 1, 
-        title: 'Tâm lý học đám đông', 
-        author: 'Gustave Le Bon', 
-        color: bookColors[0],
-        pages: 320,
-        rating: 4.5,
-        reviews: 845,
-        status: 'available',
-        description: 'Cuốn sách này khám phá tâm lý của đám đông và cách thức họ hành xử khác biệt so với cá nhân.'
-      },
-      { 
-        id: 2, 
-        title: 'Đắc nhân tâm', 
-        author: 'Dale Carnegie', 
-        color: bookColors[1],
-        pages: 320,
-        rating: 4.8,
-        reviews: 1205,
-        status: 'available',
-        description: 'Một trong những cuốn sách kinh điển về kỹ năng giao tiếp và ứng xử.'
-      },
-      { 
-        id: 3, 
-        title: 'Sapiens', 
-        author: 'Yuval Noah Harari', 
-        color: bookColors[2],
-        pages: 512,
-        rating: 4.7,
-        reviews: 967,
-        status: 'available',
-        description: 'Cuốn sách khám phá lịch sử loài người từ thời tiền sử đến hiện đại.'
-      },
-      { 
-        id: 4, 
-        title: 'Atomic Habits', 
-        author: 'James Clear', 
-        color: bookColors[3],
-        pages: 285,
-        rating: 4.9,
-        reviews: 1456,
-        status: 'available',
-        description: 'Hệ thống thực tế để xây dựng thói quen tốt và loại bỏ thói quen xấu.'
-      },
-      { 
-        id: 5, 
-        title: 'Think and Grow Rich', 
-        author: 'Napoleon Hill', 
-        color: bookColors[4],
-        pages: 400,
-        rating: 4.6,
-        reviews: 2340,
-        status: 'available',
-        description: 'Cuốn sách kinh điển về thành công và làm giàu, dựa trên nghiên cứu 20 năm.'
-      },
-      { 
-        id: 6, 
-        title: 'The 7 Habits', 
-        author: 'Stephen Covey', 
-        color: bookColors[5],
-        pages: 380,
-        rating: 4.7,
-        reviews: 1876,
-        status: 'available',
-        description: '7 thói quen của những người hiệu quả cao, phát triển tính cách và nguyên tắc.'
-      }
-    ];
-    
-    setBooks(initialBooks);
-    setNotifications([]);
-    setBorrowHistory([]);
-  }, []);
+React.useEffect(() => {
+  getBooks()
+    .then(res => {
+      const data = res.data;
+
+      // Map dữ liệu DB sang format UI đang dùng
+      const mappedBooks = data.map((book, index) => ({
+        id: book.id,
+        title: book.title,
+        author: book.author,
+        color: bookColors[index % bookColors.length], // lấy màu từ mảng có sẵn
+        pages: 300, // nếu DB chưa có cột pages thì gán tạm
+        rating: 4.5, // mặc định
+        reviews: 100, // mặc định
+        status: book.available_copies > 0 ? "available" : "borrowed",
+        description: `Cuốn sách "${book.title}" của ${book.author}, xuất bản năm ${book.published_year}.`,
+        image: book.image
+      }));
+
+      setBooks(mappedBooks);
+    })
+    .catch(err => {
+      console.error("Lỗi khi lấy sách:", err);
+    });
+
+  setNotifications([]);
+  setBorrowHistory([]);
+}, []);
+
 
   const navItems = [
     { id: 'books', label: 'Thư viện sách', icon: Book },
@@ -744,29 +701,42 @@ const UserLibrary = () => {
                 Kết quả tìm kiếm cho: "<strong>{searchTerm}</strong>" ({filteredBooks.length} kết quả)
               </div>
             )}
-            <div style={styles.booksGrid}>
-              {filteredBooks.map((book) => (
-                <div 
-                  key={book.id} 
-                  style={styles.bookCard}
-                  onClick={() => handleBookClick(book)}
-                >
-                  <div style={{
-                    ...styles.bookCover,
-                    background: book.color
-                  }}>
-                    <BookOpen size={48} color="white" />
-                  </div>
-                  <div style={styles.bookInfo}>
-                    <div style={styles.bookTitle}>{book.title}</div>
-                    <div style={styles.bookAuthor}>{book.author}</div>
-                    <span style={getStatusStyle(book.status)}>
-                      {getStatusText(book.status)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+  <div style={styles.booksGrid}>
+  {filteredBooks.map((book) => (
+    <div 
+      key={book.id} 
+      style={styles.bookCard}
+      onClick={() => handleBookClick(book)}
+    >
+      <div style={{
+        ...styles.bookCover,
+        background: book.color
+      }}>
+        {book.image ? (
+          <img
+            src={`http://localhost:8001/image/${book.image}`} 
+            alt={book.title}
+            style={{ 
+              width: "100%", 
+              height: "100%", 
+              objectFit: "cover" 
+            }}
+          />
+        ) : (
+          <BookOpen size={48} color="white" />
+        )}
+      </div>
+      <div style={styles.bookInfo}>
+        <div style={styles.bookTitle}>{book.title}</div>
+        <div style={styles.bookAuthor}>{book.author}</div>
+        <span style={getStatusStyle(book.status)}>
+          {getStatusText(book.status)}
+        </span>
+      </div>
+    </div>
+  ))}
+</div>
+
             {filteredBooks.length === 0 && searchTerm && (
               <div style={{
                 textAlign: 'center',

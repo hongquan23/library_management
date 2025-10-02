@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Home, Bell, History, Book, Search, BookOpen, Users, Calendar, Plus, Star, X, LogOut } from 'lucide-react';
+import { getBooks } from "./api";   
 
 // CSS Modules styles (inline for demonstration)
 const styles = {
@@ -537,7 +538,6 @@ const styles = {
     color: 'white'
   }
 };
-
 const Librarian = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [hoveredNavItem, setHoveredNavItem] = useState(null);
@@ -552,55 +552,44 @@ const Librarian = () => {
     rating: 5
   });
 
+  // 🆕 Thêm state cho dữ liệu động
+  const [books, setBooks] = useState([]);
+
+
   const bookColors = [
     'linear-gradient(135deg, #ff6b9d, #f06292)',
-    'linear-gradient(135deg, #667eea, #764ba2)', 
+    'linear-gradient(135deg, #667eea, #764ba2)',
     'linear-gradient(135deg, #ffeaa7, #fab1a0)',
     'linear-gradient(135deg, #74b9ff, #0984e3)'
   ];
 
-  const popularBooks = [
-    { 
-      id: 1, 
-      title: 'Tâm lý học đám đông', 
-      author: 'Gustave Le Bon', 
-      color: bookColors[0],
-      pages: 320,
-      rating: 4.5,
-      reviews: 845,
-      description: 'Cuốn sách này khám phá tâm lý của đám đông và cách thức họ hành xử khác biệt so với cá nhân. Le Bon phân tích những đặc điểm riêng của tâm lý đám đông, từ sự dễ bị ảnh hưởng đến khả năng lan truyền cảm xúc một cách nhanh chóng.'
-    },
-    { 
-      id: 2, 
-      title: 'Đắc nhân tâm', 
-      author: 'Dale Carnegie', 
-      color: bookColors[1],
-      pages: 320,
-      rating: 4.8,
-      reviews: 1205,
-      description: 'Một trong những cuốn sách kinh điển về kỹ năng giao tiếp và ứng xử. Carnegie chia sẻ những nguyên tắc cơ bản để thành công trong việc làm việc với con người, từ cách tạo ấn tượng tốt đến cách thuyết phục và lãnh đạo hiệu quả.'
-    },
-    { 
-      id: 3, 
-      title: 'Sapiens', 
-      author: 'Yuval Noah Harari', 
-      color: bookColors[2],
-      pages: 512,
-      rating: 4.7,
-      reviews: 967,
-      description: 'Cuốn sách khám phá lịch sử loài người từ thời tiền sử đến hiện đại. Harari phân tích ba cuộc cách mạng lớn đã định hình nên loài người: Cách mạng Nhận thức, Cách mạng Nông nghiệp và Cách mạng Khoa học.'
-    },
-    { 
-      id: 4, 
-      title: 'Atomic Habits', 
-      author: 'James Clear', 
-      color: bookColors[3],
-      pages: 285,
-      rating: 4.9,
-      reviews: 1456,
-      description: 'Clear trình bày một hệ thống thực tế để xây dựng thói quen tốt và loại bỏ thói quen xấu. Cuốn sách cung cấp chiến lược dựa trên khoa học để tạo ra những thay đổi nhỏ nhưng mang lại kết quả lớn trong cuộc sống.'
-    }
-  ];
+
+React.useEffect(() => {
+  getBooks()
+    .then(res => {
+      const data = res.data;
+
+      const mappedBooks = data.map((book, index) => ({
+        id: book.id,
+        title: book.title,
+        author: book.author,
+        color: bookColors[index % bookColors.length],
+        pages: book.pages || 300,
+        rating: book.rating || 4.5,
+        reviews: book.reviews || 100,
+        status: book.available_copies > 0 ? "available" : "borrowed",
+        description: book.description || `Cuốn sách "${book.title}" của ${book.author}.`,
+        image: book.image
+      }));
+
+      setBooks(mappedBooks);
+    })
+    .catch(err => {
+      console.error("Lỗi khi lấy sách:", err);
+    });
+
+}, []);
+
 
   const notifications = [
     { id: 1, title: 'Sách quá hạn', desc: '"The Lean Startup" - Người mượn: Nguyễn Văn A', time: '2 giờ trước', type: 'overdue' },
@@ -707,27 +696,39 @@ const Librarian = () => {
             </div>
 
             {/* Popular Books */}
-            <div style={styles.sectionTitle}>Sách phổ biến</div>
-            <div style={styles.booksGrid}>
-              {popularBooks.map((book, index) => (
-                <div 
-                  key={book.id} 
-                  style={styles.bookCard}
-                  onClick={() => handleBookClick(book)}
-                >
-                  <div style={{
-                    ...styles.bookCover,
-                    background: book.color
-                  }}>
-                    <BookOpen size={48} color="white" />
-                  </div>
-                  <div style={styles.bookInfo}>
-                    <div style={styles.bookTitle}>{book.title}</div>
-                    <div style={styles.bookAuthor}>{book.author}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+<div style={styles.sectionTitle}>Thư viện sách</div>
+<div style={styles.booksGrid}>
+  {books.map((book) => (
+    <div 
+      key={book.id} 
+      style={styles.bookCard}
+      onClick={() => handleBookClick(book)}
+    >
+      <div style={{
+        ...styles.bookCover,
+        background: book.color
+      }}>
+        {book.image ? (
+          <img
+            src={`http://localhost:8001/image/${book.image}`} 
+            alt={book.title}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          <BookOpen size={48} color="white" />
+        )}
+      </div>
+      <div style={styles.bookInfo}>
+        <div style={styles.bookTitle}>{book.title}</div>
+        <div style={styles.bookAuthor}>{book.author}</div>
+        <span style={getStatusStyle(book.status)}>
+          {book.status === "available" ? "Có sẵn" : "Đang mượn"}
+        </span>
+      </div>
+    </div>
+  ))}
+</div>
+
           </>
         );
 
