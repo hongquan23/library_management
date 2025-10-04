@@ -21,23 +21,42 @@ class BorrowService:
 
     @staticmethod
     def create_record(db: Session, data: BorrowRecordCreate) -> BorrowRecordOut:
-        # Kiểm tra sách còn sẵn sàng không
+        # Kiểm tra sách có tồn tại không
         book = db.query(Book).filter(Book.id == data.book_id).first()
+        if not book:
+            raise ValueError("Book not found")
+
+        # Chỉ tạo record pending, KHÔNG trừ available_copies ở đây
+        new_record = BorrowRecord(**data.dict(), status="pending")
+        db.add(new_record)
+        db.commit()
+        db.refresh(new_record)
+        return BorrowRecordOut.from_orm(new_record)
+    
+
+    @staticmethod
+    def approve_record(db: Session, record_id: int) -> Optional[BorrowRecordOut]:
+        record = db.query(BorrowRecord).filter(BorrowRecord.id == record_id).first()
+        if not record:
+            return None
+        if record.status != "pending":
+            return BorrowRecordOut.from_orm(record)
+
+        # Kiểm tra sách còn không
+        book = db.query(Book).filter(Book.id == record.book_id).first()
         if not book:
             raise ValueError("Book not found")
         if book.available_copies <= 0:
             raise ValueError("No available copies for this book")
 
-        # Tạo record mượn sách
-        new_record = BorrowRecord(**data.dict(), status="borrowed")
-        db.add(new_record)
-
-        # Giảm số lượng sách có sẵn
+        # Cập nhật record sang "borrowed"
+        record.status = "borrowed"
         book.available_copies -= 1
 
         db.commit()
-        db.refresh(new_record)
-        return BorrowRecordOut.from_orm(new_record)
+        db.refresh(record)
+        return BorrowRecordOut.from_orm(record)
+
 
     @staticmethod
     def return_book(db: Session, record_id: int, return_data: BorrowRecordUpdate) -> Optional[BorrowRecordOut]:
@@ -59,6 +78,9 @@ class BorrowService:
         db.commit()
         db.refresh(record)
         return BorrowRecordOut.from_orm(record)
+    
+
+
 
     @staticmethod
     def delete_record(db: Session, record_id: int) -> bool:

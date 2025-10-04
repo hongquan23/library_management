@@ -68,3 +68,18 @@ class BookController:
         if not success:
             raise HTTPException(status_code=404, detail="Book not found")
         return {"message": "Book deleted successfully"}
+
+    # 🔽 Thêm hàm này để consumer gọi khi borrow được approve
+    @staticmethod
+    def decrease_stock(book_id: int, db: Session):
+        book = BookService.get_book_by_id(db, book_id)
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
+
+        if book.available_copies <= 0:
+            raise HTTPException(status_code=400, detail="No copies available")
+
+        book.available_copies -= 1
+        db.commit()
+        db.refresh(book)
+        return book

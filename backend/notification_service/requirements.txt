@@ -8,3 +8,5 @@ python-jose==3.3.0
 passlib[bcrypt]==1.7.4
 starlette==0.38.4
 python-dotenv==1.0.1
+kafka-python==2.0.2
+aiokafka==0.10.0
