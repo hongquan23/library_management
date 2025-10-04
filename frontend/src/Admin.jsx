@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Book, Users, Bell, History, Search, BookOpen, Star, X, LogOut, User, Shield, Edit3, Save, Trash2, UserCheck, Crown } from 'lucide-react';
+import { getBooks } from "./api";
 
 const styles = {
   container: {
@@ -407,6 +408,7 @@ const AdminLibrary = () => {
   const [showPromoteModal, setShowPromoteModal] = useState(false);
   const [hoveredBook, setHoveredBook] = useState(null);
   const [selectedMember, setSelectedMember] = useState(null);
+  const [books, setBooks] = useState([]);
   const [members, setMembers] = useState([
     {
       id: 1,
@@ -459,50 +461,27 @@ const AdminLibrary = () => {
     'linear-gradient(135deg, #fdcb6e, #e17055)'
   ];
 
-  const books = [
-    { 
-      id: 1, 
-      title: 'Tâm lý học đám đông', 
-      author: 'Gustave Le Bon', 
-      color: bookColors[0],
-      status: 'available'
-    },
-    { 
-      id: 2, 
-      title: 'Đắc nhân tâm', 
-      author: 'Dale Carnegie', 
-      color: bookColors[1],
-      status: 'borrowed'
-    },
-    { 
-      id: 3, 
-      title: 'Sapiens', 
-      author: 'Yuval Noah Harari', 
-      color: bookColors[2],
-      status: 'available'
-    },
-    { 
-      id: 4, 
-      title: 'Atomic Habits', 
-      author: 'James Clear', 
-      color: bookColors[3],
-      status: 'available'
-    },
-    { 
-      id: 5, 
-      title: 'Think and Grow Rich', 
-      author: 'Napoleon Hill', 
-      color: bookColors[4],
-      status: 'borrowed'
-    },
-    { 
-      id: 6, 
-      title: 'The 7 Habits', 
-      author: 'Stephen Covey', 
-      color: bookColors[5],
-      status: 'available'
-    }
-  ];
+  useEffect(() => {
+  getBooks()
+    .then(res => {
+      const data = res.data;
+
+      const mappedBooks = data.map((book, index) => ({
+        id: book.id,
+        title: book.title,
+        author: book.author,
+        color: bookColors[index % bookColors.length], // màu đẹp
+        status: book.available_copies > 0 ? "available" : "borrowed",
+        image: book.image
+      }));
+
+      setBooks(mappedBooks);
+    })
+    .catch(err => {
+      console.error("Lỗi khi lấy sách:", err);
+    });
+}, []);
+
 
   const navItems = [
     { id: 'dashboard', label: 'Tổng quan', icon: Book },
@@ -611,43 +590,49 @@ const AdminLibrary = () => {
             </div>
 
             {/* Books Section */}
-            <h2 style={styles.sectionTitle}>Sách phổ biến</h2>
+            <h2 style={styles.sectionTitle}>Thư viện sách</h2>
             {searchTerm && (
               <div style={{ marginBottom: '24px', fontSize: '16px', color: '#6b7280' }}>
                 Kết quả tìm kiếm: "{searchTerm}" ({filteredBooks.length} kết quả)
               </div>
             )}
-            <div style={styles.booksGrid}>
-              {filteredBooks.map((book) => {
-                const isHovered = hoveredBook === book.id;
-                return (
-                  <div 
-                    key={book.id} 
-                    style={{
-                      ...styles.bookCard,
-                      ...(isHovered ? styles.bookCardHover : {})
-                    }}
-                    onClick={() => handleBookClick(book)}
-                    onMouseEnter={() => setHoveredBook(book.id)}
-                    onMouseLeave={() => setHoveredBook(null)}
-                  >
-                    <div style={{
-                      ...styles.bookCover,
-                      background: book.color
-                    }}>
-                      <BookOpen size={48} color="white" />
-                    </div>
-                    <div style={styles.bookInfo}>
-                      <div style={styles.bookTitle}>{book.title}</div>
-                      <div style={styles.bookAuthor}>{book.author}</div>
-                      <span style={getStatusStyle(book.status)}>
-                        {getStatusText(book.status)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+        <div style={styles.booksGrid}>
+  {filteredBooks.map((book) => {
+    const isHovered = hoveredBook === book.id;
+    return (
+      <div 
+        key={book.id} 
+        style={{
+          ...styles.bookCard,
+          ...(isHovered ? styles.bookCardHover : {})
+        }}
+        onClick={() => handleBookClick(book)}
+        onMouseEnter={() => setHoveredBook(book.id)}
+        onMouseLeave={() => setHoveredBook(null)}
+      >
+        <div style={{ ...styles.bookCover, background: book.color }}>
+          {book.image ? (
+            <img
+              src={`http://localhost:8001/image/${book.image}`}
+              alt={book.title}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <BookOpen size={48} color="white" />
+          )}
+        </div>
+        <div style={styles.bookInfo}>
+          <div style={styles.bookTitle}>{book.title}</div>
+          <div style={styles.bookAuthor}>{book.author}</div>
+          <span style={getStatusStyle(book.status)}>
+            {getStatusText(book.status)}
+          </span>
+        </div>
+      </div>
+    );
+  })}
+</div>
+
           </>
         );
 

@@ -24,3 +24,9 @@ export  const loginUser = (data) => userApi.post("/users/login", data);
 export const resetPassword = async(data) => {
   return await userApi.post("/users/reset-password",data);
 }
+// ================== Book API ==================
+export const getBooks = () => bookApi.get("/books");
+export const getBookById = (id) => bookApi.get(`/books/${id}`);
+export const createBook = (data) => bookApi.post("/books", data);
+export const updateBook = (id, data) => bookApi.put(`/books/${id}`, data);
+export const deleteBook = (id) => bookApi.delete(`/books/${id}`);
