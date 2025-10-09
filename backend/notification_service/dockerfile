@@ -1,6 +1,7 @@
 # Sử dụng Python chính thức, nhẹ
 FROM python:3.11-slim
 
+RUN apt-get update && apt-get install -y netcat-openbsd
 # Thiết lập thư mục làm việc trong container
 WORKDIR /app
 

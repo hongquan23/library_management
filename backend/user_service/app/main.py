@@ -16,9 +16,9 @@ app.add_middleware(
 )
 
 # Tạo bảng DB khi service khởi động
-@app.on_event("startup")
-def on_startup():
-    init_db()
+# @app.on_event("startup")
+# def on_startup():
+#     init_db()
 
 # Đăng ký router
 app.include_router(user_router)

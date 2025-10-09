@@ -1,10 +1,12 @@
+import asyncio
 from fastapi import FastAPI
 from .routers.book_router import router as book_router
-from .services.consumer import KafkaBookConsumer
+from .services.consumer import consume_borrow_requests
 import threading
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
+from .services.producer import close_producer, get_producer
 
 app = FastAPI(title="Book Service")
 
@@ -26,12 +28,18 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))   # book_service/app
 ROOT_DIR = os.path.dirname(BASE_DIR)                   # book_service
 IMAGE_DIR = os.path.join(ROOT_DIR, "image")
 
-consumer = KafkaBookConsumer()
+
 
 @app.on_event("startup")
-def start_consumer():
-    thread = threading.Thread(target=consumer.consume_messages, daemon=True)
-    thread.start()
+async def startup_event():
+    # Khởi tạo Kafka producer khi app khởi động
+    await get_producer()
+    asyncio.create_task(consume_borrow_requests())
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    # Đóng Kafka producer khi app tắt
+    await close_producer()
 
 
 # Mount static

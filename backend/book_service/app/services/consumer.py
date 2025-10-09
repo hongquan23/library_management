@@ -1,48 +1,58 @@
-from kafka import KafkaConsumer
 import json
-import logging
+import asyncio
+from aiokafka import AIOKafkaConsumer
 from sqlalchemy.orm import Session
-from shared.database.session import SessionLocal
+from shared.database.session import get_db
+from .producer import send_kafka_event
 from ..controllers.book_controller import BookController
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+KAFKA_BROKER_URL = "kafka:9092"
+TOPIC = "borrow.requested"
 
-class KafkaBookConsumer:
-    def __init__(self, topic="borrow.approved", group_id="book_service", bootstrap_servers="kafka:29092"):
-        self.topic = topic
-        self.group_id = group_id
-        self.bootstrap_servers = bootstrap_servers
+async def consume_borrow_requests():
+    loop = asyncio.get_event_loop()
+    consumer = AIOKafkaConsumer(
+        TOPIC,
+        loop=loop,
+        bootstrap_servers=KAFKA_BROKER_URL,
+        value_deserializer=lambda v: json.loads(v.decode("utf-8")),
+        group_id="book-service",
+        enable_auto_commit=True,
+        auto_offset_reset="earliest"
+    )
+    await consumer.start()
+    try:
+        async for msg in consumer:
+            event = msg.value
+            borrow_id = event["id"]   # borrow record id do borrow_service tạo
+            book_id = event["book_id"]
+            member_id = event["member_id"]
 
-    def consume_messages(self):
-        consumer = KafkaConsumer(
-            self.topic,
-            bootstrap_servers=[self.bootstrap_servers],
-            group_id=self.group_id,
-            value_deserializer=lambda x: json.loads(x.decode("utf-8")),
-            auto_offset_reset="earliest",
-            enable_auto_commit=True,
-        )
-        logger.info(f"Book Service Consumer listening on topic: {self.topic}")
+            db: Session = next(get_db())
+            try:
+                # kiểm tra stock
+                book = BookController.get_book(book_id, db)
+                if book.available_copies > 0:
+                    # trừ stock
+                    book = BookController.decrease_stock(book_id, db)
 
-        for message in consumer:
-            data = message.value
-            logger.info(f"📩 Received event from Kafka: {data}")
+                    await send_kafka_event("borrow.approved", {
+                        "id": borrow_id,
+                        "book_id": book.id,
+                        "member_id": member_id,
+                        "status": "APPROVED"
+                    })
+                else:
+                    # hết sách
+                    await send_kafka_event("borrow.failed", {
+                        "id": borrow_id,
+                        "book_id": book_id,
+                        "member_id": member_id,
+                        "status": "FAILED",
+                        "reason": "Out of stock"
+                    })
+            finally:
+                db.close()
 
-            # Xử lý event: Giảm stock của sách khi borrow được approve
-            self.process_borrow_approved(data)
-
-    def process_borrow_approved(self, data: dict):
-        db: Session = SessionLocal()
-        try:
-            book_id = data.get("book_id")
-            logger.info(f"📚 Updating stock for book_id={book_id}")
-
-            # Gọi controller để giảm stock
-            BookController.decrease_stock(book_id, db)
-
-            logger.info(f"✅ Stock updated successfully for book_id={book_id}")
-        except Exception as e:
-            logger.error(f"❌ Error processing borrow.approved event: {e}")
-        finally:
-            db.close()
+    finally:
+        await consumer.stop()

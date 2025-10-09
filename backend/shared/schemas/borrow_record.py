@@ -1,13 +1,13 @@
 # shared-library/shared/schemas/borrow_record.py
-from pydantic import BaseModel
+from pydantic import BaseModel,ConfigDict
 from datetime import date, datetime
 from typing import Optional
 
 # ==== Base Schema ====
 class BorrowRecordBase(BaseModel):
-    user_id: int      # Người mượn sách (Member)
+    member_id: int      # Người mượn sách (Member)
     book_id: int      # Sách được mượn
-    due_date: date    # Ngày trả dự kiến
+    borrowed_at: date    # Ngày mượn
 
 # ==== Create Schema ====
 class BorrowRecordCreate(BorrowRecordBase):
@@ -15,15 +15,14 @@ class BorrowRecordCreate(BorrowRecordBase):
 
 # ==== Update Schema ====
 class BorrowRecordUpdate(BaseModel):
-    return_date: Optional[date] = None
-    is_returned: Optional[bool] = None
+    returned_at: Optional[date] = None
+    status: Optional[str] = None
 
 # ==== Output Schema ====
 class BorrowRecordOut(BorrowRecordBase):
     id: int
-    borrow_date: datetime
-    return_date: Optional[date] = None
-    is_returned: bool
+    borrowed_at: datetime
+    returned_at: Optional[date] = None
+    status: Optional[str] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

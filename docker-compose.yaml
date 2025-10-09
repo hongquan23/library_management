@@ -1,4 +1,4 @@
-version: "3.9"
+
 
 services:
   # =========================
@@ -34,21 +34,28 @@ services:
       dockerfile: Dockerfile
     container_name: alembic_migration
     command: >
-      sh -c "alembic -c /app/shared/alembic.ini upgrade head"
+      sh -c "
+        echo '⏳ Waiting for Postgres...';
+        until nc -z postgres 5432; do
+          echo '🔄 PostgreSQL not ready yet...';
+          sleep 3;
+        done;
+        echo '✅ PostgreSQL is ready!';
+        alembic -c /app/shared/alembic.ini upgrade head
+      "
     volumes:
       - ./backend:/app
     depends_on:
       - postgres
-        # condition: service_healthy
     environment:
       PYTHONPATH: /app
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     networks:
       - app_network
 
-  # # =========================
-  # # User Service
-  # # =========================
+  # # # =========================
+  # # # User Service
+  # # # =========================
   user_service:
     image: user_service
     container_name: user_service
@@ -71,7 +78,17 @@ services:
     image: book_service
     container_name: book_service
     command: >
-      sh -c "uvicorn book_service.app.main:app --host 0.0.0.0 --port 8001 --reload"
+      sh -c "
+        echo '⏳ Waiting for Kafka...';
+        until nc -z kafka 9092; do
+          echo '🔄 Kafka not ready yet...';
+          sleep 5;
+        done;
+        echo '✅ Kafka port is open!';
+        # Chờ thêm vài giây để Kafka thực sự sẵn sàng
+        sleep 30;
+        uvicorn book_service.app.main:app --host 0.0.0.0 --port 8001 --reload
+      "
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       PYTHONPATH: /app
@@ -90,7 +107,17 @@ services:
     image: borrow_service
     container_name: borrow_service
     command: >
-      sh -c "uvicorn borrow_service.app.main:app --host 0.0.0.0 --port 8002 --reload"
+      sh -c "
+        echo '⏳ Waiting for Kafka...';
+        until nc -z kafka 9092; do
+          echo '🔄 Kafka not ready yet...';
+          sleep 5;
+        done;
+        echo '✅ Kafka port is open!';
+        # Chờ thêm vài giây để Kafka thực sự sẵn sàng
+        sleep 30;
+        uvicorn borrow_service.app.main:app --host 0.0.0.0 --port 8002 --reload
+      "
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       PYTHONPATH: /app
@@ -109,7 +136,17 @@ services:
     image: notification_service
     container_name: notification_service
     command: >
-      sh -c "uvicorn notification_service.app.main:app --host 0.0.0.0 --port 8003 --reload"
+      sh -c "
+        echo '⏳ Waiting for Kafka...';
+        until nc -z kafka 9092; do
+          echo '🔄 Kafka not ready yet...';
+          sleep 5;
+        done;
+        echo '✅ Kafka port is open!';
+        # Chờ thêm vài giây để Kafka thực sự sẵn sàng
+        sleep 30;
+        uvicorn notification_service.app.main:app --host 0.0.0.0 --port 8003 --reload
+      "
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       PYTHONPATH: /app
@@ -120,6 +157,7 @@ services:
     depends_on:
       - postgres
       - migration
+      - kafka
     networks:
       - app_network
   
@@ -129,16 +167,41 @@ services:
     container_name: kafka
     environment:
       KAFKA_BROKER_ID: 1
+
       # Listener cho client và controller
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_INTERNAL://kafka:29092
+
+
+      # Chế độ KRaft (không cần ZooKeeper)
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
       CLUSTER_ID: "febd9c64-861f-4759-826e-8d8bdb980b5a"
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+      # Cấu hình hiệu năng
       KAFKA_NUM_PARTITIONS: 1
+      KAFKA_HEAP_OPTS: "-Xms512M -Xmx1G"
+      KAFKA_CONTROLLER_QUORUM_REQUEST_TIMEOUT_MS: 10000
+      KAFKA_BROKER_HEARTBEAT_INTERVAL_MS: 3000
+      KAFKA_CONTROLLER_SOCKET_TIMEOUT_MS: 10000
+      KAFKA_LOG_FLUSH_INTERVAL_MESSAGES: 10000
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+
+      # Giảm spam log về performance monitor
+      KAFKA_LOG4J_LOGGERS: "org.apache.kafka.controller.EventPerformanceMonitor=warn"
+
+
     volumes:
       - kafka_data:/var/lib/kafka/data
     ports:
@@ -147,12 +210,15 @@ services:
     networks:
       - app_network
 
+
+
 # =========================
 # Volumes & Networks
 # =========================
 volumes:
   postgres_lib:
   kafka_data:
+    driver: local
 
 networks:
   app_network:

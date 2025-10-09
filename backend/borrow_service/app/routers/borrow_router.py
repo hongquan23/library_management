@@ -29,7 +29,7 @@ async def create_borrow_record(data: BorrowRecordCreate = Body(...), db: Session
     await send_kafka_event("borrow.requested", {
         "id": borrow.id,
         "book_id": borrow.book_id,
-        "user_id": borrow.user_id,
+        "member_id": borrow.member_id,
         "status": borrow.status,
     })
 
@@ -53,7 +53,7 @@ async def approve_borrow_record(record_id: int, db: Session = Depends(get_db)):
     await send_kafka_event("borrow.approved", {
         "id": borrow.id,
         "book_id": borrow.book_id,
-        "user_id": borrow.user_id,
+        "member_id": borrow.member_id,
         "status": borrow.status,
     })
 
