@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Home, Bell, History, Book, Search, BookOpen, Users, Calendar, Plus, Star, X, LogOut } from 'lucide-react';
-import { getBooks } from "./api";   
+import { getBooks, createBook, bookApi } from "./api";   
 import { useNavigate } from "react-router-dom";
 
 
@@ -636,19 +636,66 @@ React.useEffect(() => {
     setShowAddBookModal(true);
   };
 
-  const handleSubmitBook = (e) => {
-    e.preventDefault();
-    // Logic thêm sách mới
-    console.log('New book:', newBook);
-    setShowAddBookModal(false);
-    setNewBook({
-      title: '',
-      author: '',
-      description: '',
-      pages: '',
-      rating: 5
+const handleSubmitBook = async (e) => {
+  e.preventDefault();
+
+  if (!newBook.title || !newBook.author || !newBook.pages) {
+    alert("⚠️ Vui lòng nhập đầy đủ thông tin sách!");
+    return;
+  }
+
+  try {
+    // 🧱 Tạo FormData để gửi file + text
+    const formData = new FormData();
+    formData.append("title", newBook.title);
+    formData.append("author", newBook.author);
+    formData.append("published_year", new Date().getFullYear());
+    formData.append("available_copies", newBook.pages);
+
+    // Nếu có ảnh upload, gửi file; nếu không, gửi null
+    if (newBook.imageFile) {
+      formData.append("image", newBook.imageFile);
+    }
+
+    // 🛰️ Gửi request qua Axios
+    const res = await bookApi.post("/books/", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
-  };
+
+    alert("✅ Thêm sách thành công!");
+
+    // 🔁 Cập nhật danh sách hiển thị
+    setBooks((prev) => [
+      ...prev,
+      {
+        id: res.data.id || Date.now(),
+        title: newBook.title,
+        author: newBook.author,
+        available_copies: newBook.pages,
+        published_year: new Date().getFullYear(),
+        description: newBook.description,
+        image: newBook.imageFile ? newBook.imageFile.name : "",
+        color: "linear-gradient(135deg, #667eea, #764ba2)",
+        status: "available",
+      },
+    ]);
+
+    // Reset form
+    setNewBook({
+      title: "",
+      author: "",
+      description: "",
+      pages: "",
+      imageFile: null,
+      rating: 5,
+    });
+    setShowAddBookModal(false);
+    
+  } catch (err) {
+    console.error("❌ Lỗi khi thêm sách:", err);
+    alert("Thêm sách thất bại. Vui lòng kiểm tra backend!");
+  }
+};
 
   const  renderStars = (rating) => {
     return Array.from({ length: 5 }, (_, index) => (
@@ -1001,7 +1048,7 @@ const handleSearch = (e) => {
                 </div>
                 
                 <div style={styles.formGroup}>
-                  <label style={styles.formLabel}>Số trang</label>
+                  <label style={styles.formLabel}>Số sách</label>
                   <input
                     type="number"
                     style={styles.formInput}
@@ -1010,7 +1057,42 @@ const handleSearch = (e) => {
                     required
                   />
                 </div>
-                
+                <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Ảnh bìa</label>
+                <label
+                  htmlFor="file-upload"
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '2px dashed #cbd5e1',
+                    borderRadius: '8px',
+                    backgroundColor: '#f9fafb',
+                    color: newBook.imageFile ? '#111827' : '#6b7280',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => (e.target.style.borderColor = '#6366f1')}
+                  onMouseLeave={(e) => (e.target.style.borderColor = '#cbd5e1')}
+                >
+                  {newBook.imageFile
+                    ? `📷 ${newBook.imageFile.name}`
+                    : 'Chọn ảnh bìa (nhấn để tải lên)'}
+                </label>
+                <input
+                  id="file-upload"
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) =>
+                    setNewBook({ ...newBook, imageFile: e.target.files[0] })
+                  }
+                />
+              </div>
+
+
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Mô tả</label>
                   <textarea
