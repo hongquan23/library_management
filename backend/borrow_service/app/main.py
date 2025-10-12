@@ -3,7 +3,17 @@ from fastapi import FastAPI
 from .routers.borrow_router import router as borrow_router
 from .services.producer import close_producer, get_producer
 from .services.consumer import consume_borrow_responses
+from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI(title="Borrow Service")
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Register router
 app.include_router(borrow_router)

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import styles from "./login.module.css"; // ✅ dùng CSS Module
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { registerUser, loginUser, resetPassword } from "./api"; // ✅ import API
+import { registerUser, loginUser, resetPassword,getAllUsers } from "./api"; // ✅ import API
 
 // Component PasswordInput dùng chung
 const PasswordInput = ({ value, onChange, placeholder, show, toggleShow }) => (
@@ -106,32 +106,66 @@ const handleSignIn = async (e) => {
       password: password,
     };
 
+    console.log("🔐 DATA ĐĂNG NHẬP:", loginData);
+
     const response = await loginUser(loginData);
+    console.log("✅ RESPONSE ĐĂNG NHẬP:", response.data);
+
     const { access_token } = response.data;
 
-    // Giải mã token để lấy role
+    // Giải mã token
     const decoded = JSON.parse(atob(access_token.split(".")[1]));
     const userRole = decoded.role;
 
-    // So sánh role người nhập với role trong DB
+    console.log("🔍 DECODED TOKEN:", decoded);
+
+    // 🟢 GỌI API LẤY DANH SÁCH USERS ĐỂ TÌM USER ID THẬT
+    console.log("🔄 ĐANG LẤY DANH SÁCH USERS...");
+    const usersResponse = await getAllUsers(); // 👈 DÙNG API CÓ SẴN
+    console.log("📊 DANH SÁCH USERS:", usersResponse.data);
+
+    // Tìm user bằng email
+    const userFromDB = usersResponse.data.find(user => user.email === email);
+    console.log("👤 USER TÌM THẤY TRONG DB:", userFromDB);
+
+    if (!userFromDB) {
+      alert("Không tìm thấy thông tin user!");
+      return;
+    }
+
+    // So sánh role
     if (userRole !== role) {
       alert("Role không khớp! Đăng nhập thất bại.");
       return;
     }
 
-    // Lưu token và role vào localStorage
+    // 🟢 LƯU USER INFO VỚI ID THẬT TỪ DATABASE
+    const userInfo = {
+      id: userFromDB.id, // 👈 ID SỐ THẬT
+      email: userFromDB.email,
+      name: userFromDB.username || "User",
+      role: userRole
+    };
+
     localStorage.setItem("token", access_token);
     localStorage.setItem("role", userRole);
+    localStorage.setItem("user", JSON.stringify(userInfo));
+
+    console.log("💾 ĐÃ LƯU LOCALSTORAGE:", userInfo);
+    console.log("🔍 KIỂM TRA LOCALSTORAGE:");
+    console.log("user:", localStorage.getItem("user"));
+    console.log("token:", localStorage.getItem("token"));
+    console.log("role:", localStorage.getItem("role"));
 
     alert("Đăng nhập thành công!");
     redirectByRole(userRole);
+
   } catch (error) {
-    console.error("Đăng nhập lỗi:", error);
+    console.error("❌ LỖI ĐĂNG NHẬP:", error);
+    console.error("📊 RESPONSE LỖI:", error.response?.data);
     alert(error.response?.data?.detail || "Đăng nhập thất bại!");
   }
 };
-
-
 
   // Quên mật khẩu
   const handleForgotPassword = async (e) => {

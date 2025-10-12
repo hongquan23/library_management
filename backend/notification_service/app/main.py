@@ -3,8 +3,16 @@ from .routers.notification_router import router as notification_router
 from .services.consumer import consume_notifications
 import threading
 import asyncio
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Notification Service")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # React chạy ở đây
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(notification_router)
 

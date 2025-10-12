@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Bell, History, Book, Search, BookOpen, Star, X, LogOut, Trash2, User, Settings, ChevronDown } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
-import { getBooks } from "./api";
+import { getBooks,createBorrow } from "./api";
 
 // CSS Modules styles (inline for demonstration)
 const styles = {
@@ -611,59 +611,85 @@ React.useEffect(() => {
     }
   };
 
-  const handleBorrowBook = () => {
-    const currentDate = new Date();
-    const borrowDate = currentDate.toLocaleDateString('vi-VN');
-    
-    // Tính ngày hết hạn (15 ngày sau)
-    const dueDate = new Date();
-    dueDate.setDate(currentDate.getDate() + 15);
-    const dueDateString = dueDate.toLocaleDateString('vi-VN');
-    
-    // Cập nhật trạng thái sách thành "borrowed"
-// Giảm số lượng sách và cập nhật trạng thái
-setBooks(prevBooks =>
-  prevBooks.map(book =>
-    book.id === selectedBook.id
-      ? {
-          ...book,
-          available_copies: Math.max((book.available_copies || 0) - 1, 0),
-          status: (book.available_copies || 0) - 1 > 0 ? 'available' : 'borrowed'
-        }
-      : book
-  )
-);
-setSelectedBook(prev => ({
-  ...prev,
-  available_copies: Math.max((prev.available_copies || 0) - 1, 0),
-  status: (prev.available_copies || 0) - 1 > 0 ? 'available' : 'borrowed'
-}));
+const handleBorrowBook = async () => {
+  try {
+    if (!selectedBook) {
+      alert("Vui lòng chọn một cuốn sách để mượn!");
+      return;
+    }
 
-    
-    // Thêm thông báo mới
-    const newNotification = {
-      id: Date.now(),
-      title: 'Mượn sách thành công',
-      desc: `"${selectedBook.title}" - Hạn trả: ${dueDateString}`,
-      time: 'Vừa xong'
+    console.log("🚀 === BẮT ĐẦU MƯỢN SÁCH ===");
+
+    const currentUser = JSON.parse(localStorage.getItem("user"));
+    console.log("📚 Mượn sách:", selectedBook);
+    console.log("👤 User:", currentUser);
+
+    // 🟢 CHUẨN BỊ DATA - LOG CHI TIẾT
+    const borrowData = {
+      member_id: currentUser.id,
+      book_id: selectedBook.id,
+      borrowed_at: new Date().toISOString(),
     };
+
+    console.log("📤 DATA GỬI LÊN API:", borrowData);
+    console.log("🔍 KIỂU DỮ LIỆU:", {
+      member_id: { value: borrowData.member_id, type: typeof borrowData.member_id },
+      book_id: { value: borrowData.book_id, type: typeof borrowData.book_id },
+      borrowed_at: { value: borrowData.borrowed_at, type: typeof borrowData.borrowed_at }
+    });
+
+    // 🟢 GỬI REQUEST
+    console.log("🔄 ĐANG GỬI REQUEST...");
+    const response = await createBorrow(borrowData);
+    console.log("✅ THÀNH CÔNG:", response.data);
+
+    // 🟢 RELOAD DATA
+    console.log("🔄 ĐANG TẢI LẠI DANH SÁCH SÁCH...");
+    const res = await getBooks();
+    const updatedBook = res.data.find(b => b.id === selectedBook.id);
+    console.log("📊 SÁCH SAU KHI MƯỢN:", updatedBook);
+
+    // Cập nhật state
+    setBooks(prevBooks =>
+      prevBooks.map(book =>
+        book.id === updatedBook.id
+          ? { 
+              ...book, 
+              available_copies: updatedBook.available_copies,
+              status: updatedBook.available_copies > 0 ? "available" : "borrowed"
+            }
+          : book
+      )
+    );
+
+    setSelectedBook({
+      ...selectedBook,
+      available_copies: updatedBook.available_copies,
+      status: updatedBook.available_copies > 0 ? "available" : "borrowed"
+    });
+
+    console.log("🎉 MƯỢN SÁCH THÀNH CÔNG!");
+    alert(`Đã mượn sách "${selectedBook.title}" thành công!`);
+
+  } catch (error) {
+    console.error("💥 === LỖI CHI TIẾT ===");
+    console.error("📊 STATUS CODE:", error.response?.status);
+    console.error("📝 RESPONSE DATA:", error.response?.data); // 👈 QUAN TRỌNG NHẤT
+    console.error("🚨 ERROR MESSAGE:", error.message);
+    console.error("🔧 ERROR CONFIG:", {
+      url: error.config?.url,
+      method: error.config?.method,
+      data: error.config?.data
+    });
+
+    // Hiển thị thông báo lỗi chi tiết
+    const errorDetail = error.response?.data?.detail;
+    console.error("📢 CHI TIẾT LỖI:", errorDetail);
     
-    setNotifications(prevNotifications => [newNotification, ...prevNotifications]);
-    
-    // Thêm vào lịch sử mượn
-    const newHistoryRecord = {
-      id: Date.now(),
-      bookTitle: selectedBook.title,
-      borrowDate: borrowDate,
-      dueDate: dueDateString,
-      status: 'Đang mượn'
-    };
-    
-    setBorrowHistory(prevHistory => [newHistoryRecord, ...prevHistory]);
-    
-    alert(`Mượn sách "${selectedBook.title}" thành công! Hạn trả: ${dueDateString}`);
-    setSelectedBook(null);
-  };
+    alert(errorDetail || "Không thể mượn sách. Vui lòng thử lại!");
+  }
+};
+
 
   const renderStars = (rating) => {
     return Array.from({ length: 5 }, (_, index) => (

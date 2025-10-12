@@ -7,7 +7,7 @@ from typing import Optional
 class BorrowRecordBase(BaseModel):
     member_id: int      # Người mượn sách (Member)
     book_id: int      # Sách được mượn
-    borrowed_at: date    # Ngày mượn
+    borrowed_at: datetime    # Ngày mượn
 
 # ==== Create Schema ====
 class BorrowRecordCreate(BorrowRecordBase):
