@@ -534,9 +534,7 @@ React.useEffect(() => {
         title: book.title,
         author: book.author,
         color: bookColors[index % bookColors.length], // lấy màu từ mảng có sẵn
-        pages: 300, // nếu DB chưa có cột pages thì gán tạm
-        rating: 4.5, // mặc định
-        reviews: 100, // mặc định
+        available_copies: book.available_copies, 
         status: book.available_copies > 0 ? "available" : "borrowed",
         description: `Cuốn sách "${book.title}" của ${book.author}, xuất bản năm ${book.published_year}.`,
         image: book.image
@@ -623,13 +621,24 @@ React.useEffect(() => {
     const dueDateString = dueDate.toLocaleDateString('vi-VN');
     
     // Cập nhật trạng thái sách thành "borrowed"
-    setBooks(prevBooks => 
-      prevBooks.map(book => 
-        book.id === selectedBook.id 
-          ? { ...book, status: 'borrowed' }
-          : book
-      )
-    );
+// Giảm số lượng sách và cập nhật trạng thái
+setBooks(prevBooks =>
+  prevBooks.map(book =>
+    book.id === selectedBook.id
+      ? {
+          ...book,
+          available_copies: Math.max((book.available_copies || 0) - 1, 0),
+          status: (book.available_copies || 0) - 1 > 0 ? 'available' : 'borrowed'
+        }
+      : book
+  )
+);
+setSelectedBook(prev => ({
+  ...prev,
+  available_copies: Math.max((prev.available_copies || 0) - 1, 0),
+  status: (prev.available_copies || 0) - 1 > 0 ? 'available' : 'borrowed'
+}));
+
     
     // Thêm thông báo mới
     const newNotification = {
@@ -1013,19 +1022,13 @@ React.useEffect(() => {
               
               <div style={styles.statsContainer}>
                 <div style={styles.statItem}>
-                  <div style={styles.statNumber}>{selectedBook.pages}</div>
-                  <div style={styles.statLabel}>Pages</div>
-                </div>
-                <div style={styles.statItem}>
-                  <div style={styles.statNumber}>{selectedBook.rating}</div>
-                  <div style={styles.statLabel}>Rating</div>
-                </div>
-                <div style={styles.statItem}>
-                  <div style={styles.statNumber}>{selectedBook.reviews}</div>
-                  <div style={styles.statLabel}>Reviews</div>
+                  <div style={styles.statNumber}>
+                    {selectedBook.available_copies ?? "—"}
+                  </div>
+                  <div style={styles.statLabel}>SỐ LƯỢNG</div>
                 </div>
               </div>
-              
+
               <div style={styles.description}>
                 {selectedBook.description}
               </div>

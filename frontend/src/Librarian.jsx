@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Home, Bell, History, Book, Search, BookOpen, Users, Calendar, Plus, Star, X, LogOut } from 'lucide-react';
 import { getBooks } from "./api";   
+import { useNavigate } from "react-router-dom";
 
-// CSS Modules styles (inline for demonstration)
+
 const styles = {
   container: {
     display: 'flex',
@@ -82,7 +83,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'space-between'
   },
-  searchContainer: {
+ searchContainer: {
     position: 'relative',
     width: '400px'
   },
@@ -104,20 +105,21 @@ const styles = {
     color: '#9ca3af'
   },
   searchButton: {
-    position: 'absolute',
-    right: '8px',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    backgroundColor: '#6366f1',
-    border: 'none',
-    borderRadius: '50%',
-    width: '32px',
-    height: '32px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    color: 'white'
+  position: 'absolute',
+  right: '8px',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  backgroundColor: '#6366f1',
+  border: 'none',
+  borderRadius: '20px',
+  padding: '6px 16px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  color: 'white',
+  fontSize: '14px',
+  fontWeight: '500'
   },
   userProfile: {
     display: 'flex',
@@ -540,10 +542,12 @@ const styles = {
 };
 const Librarian = () => {
   const [activeTab, setActiveTab] = useState('home');
+  const navigate = useNavigate();
   const [hoveredNavItem, setHoveredNavItem] = useState(null);
   const [selectedBook, setSelectedBook] = useState(null);
   const [showAddBookModal, setShowAddBookModal] = useState(false);
   const [hoveredLogout, setHoveredLogout] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [newBook, setNewBook] = useState({
     title: '',
     author: '',
@@ -574,9 +578,7 @@ React.useEffect(() => {
         title: book.title,
         author: book.author,
         color: bookColors[index % bookColors.length],
-        pages: book.pages || 300,
-        rating: book.rating || 4.5,
-        reviews: book.reviews || 100,
+        available_copies: book.available_copies,  
         status: book.available_copies > 0 ? "available" : "borrowed",
         description: book.description || `Cuốn sách "${book.title}" của ${book.author}.`,
         image: book.image
@@ -659,12 +661,16 @@ React.useEffect(() => {
     ));
   };
 
+
   const handleLogout = () => {
-    // Logic chuyển về trang login
-    alert('Chuyển về trang login.jsx');
-    // Trong thực tế, bạn sẽ sử dụng router để navigate
-    // navigate('/login') hoặc window.location.href = '/login'
-  };
+    localStorage.removeItem("token");
+    navigate("/");
+  }
+const handleSearch = (e) => {
+  e.preventDefault();
+  console.log("🔍 Đang tìm kiếm:", searchTerm);
+  // Ở đây bạn có thể thêm hành động cụ thể — ví dụ gọi API nếu muốn.
+};
 
   console.log('Active tab:', activeTab); // Debug log
 
@@ -878,17 +884,19 @@ React.useEffect(() => {
           {/* Header */}
           <header style={styles.header}>
             <div style={styles.searchContainer}>
-              <Search size={20} style={styles.searchIcon} />
-              <input
-                type="text"
-                placeholder="Tìm kiếm sách, tác giả..."
-                style={styles.searchBar}
-              />
-              <button style={styles.searchButton}>
-                <Search size={16} />
-              </button>
-            </div>
-            
+                          <Search size={20} style={styles.searchIcon} />
+                          <input
+                            type="text"
+                            placeholder="Tìm kiếm sách, tác giả..."
+                            style={styles.searchBar}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                          />
+                          <button style={styles.searchButton} onClick={handleSearch}>
+                            <Search size={16} />
+                          </button>
+                        </div>
             <div style={styles.userProfile}>
               <div style={styles.notificationIcon}>
                 <Bell size={24} color="#6b7280" />
@@ -947,23 +955,15 @@ React.useEffect(() => {
               
               <div style={styles.statsContainer}>
                 <div style={styles.statItem}>
-                  <div style={styles.statNumber}>{selectedBook.pages}</div>
-                  <div style={styles.statLabel}>Pages</div>
+                  <div style={styles.statNumber}>
+                    {selectedBook.available_copies ?? "—"}
+                  </div>
+                  <div style={styles.statLabel}>SỐ LƯỢNG</div>
                 </div>
-                <div style={styles.statItem}>
-                  <div style={styles.statNumber}>{selectedBook.rating}</div>
-                  <div style={styles.statLabel}>Rating</div>
-                </div>
-                <div style={styles.statItem}>
-                  <div style={styles.statNumber}>{selectedBook.reviews}</div>
-                  <div style={styles.statLabel}>Reviews</div>
-                </div>
-              </div>
-              
+              </div>   
               <div style={styles.description}>
                 {selectedBook.description}
-              </div>
-              
+              </div>  
               <button style={styles.readButton}>
                 <BookOpen size={16} />
                 Read Now

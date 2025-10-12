@@ -30,3 +30,9 @@ export const getBookById = (id) => bookApi.get(`/books/${id}`);
 export const createBook = (data) => bookApi.post("/books", data);
 export const updateBook = (id, data) => bookApi.put(`/books/${id}`, data);
 export const deleteBook = (id) => bookApi.delete(`/books/${id}`);
+
+//User API
+export const getAllUsers = () => userApi.get("/users");
+export const promoteUser = (userId) => userApi.put(`/users/${userId}/promote`);
+export const deleteUser = (userId) => userApi.delete(`/users/${userId}`);
+

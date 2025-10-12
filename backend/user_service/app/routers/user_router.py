@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from shared.schemas.user import UserCreate, UserLogin, UserResponse, ResetPasswordRequest
 from shared.database.session import get_db
 from ..controllers.user_controller import UserController
+from shared.models.user import User, UserRole
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -20,3 +21,26 @@ def login_user(login_data: UserLogin, db: Session = Depends(get_db)):
 def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
     return UserController.reset_password(db, data.email, data.new_password)
 
+@router.get("/")
+def get_all_users(db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    return users
+
+
+# ✅ Thăng cấp người dùng (VD: MEMBER → LIBRARIAN)
+@router.put("/{user_id}/promote")
+def promote_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
+
+    if user.role == UserRole.MEMBER:
+        user.role = UserRole.LIBRARIAN
+    elif user.role == UserRole.LIBRARIAN:
+        user.role = UserRole.ADMIN
+    else:
+        return {"message": "Người dùng đã đạt cấp cao nhất"}
+
+    db.commit()
+    db.refresh(user)
+    return {"message": "Thăng cấp thành công", "new_role": user.role.value}

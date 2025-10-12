@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Book, Users, Bell, History, Search, BookOpen, Star, X, LogOut, User, Shield, Edit3, Save, Trash2, UserCheck, Crown } from 'lucide-react';
-import { getBooks } from "./api";
+import { getBooks, getAllUsers, promoteUser } from "./api";
+import { useNavigate } from "react-router-dom";
+
 
 const styles = {
   container: {
@@ -81,7 +83,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'space-between'
   },
-  searchContainer: {
+ searchContainer: {
     position: 'relative',
     width: '400px'
   },
@@ -103,21 +105,23 @@ const styles = {
     color: '#9ca3af'
   },
   searchButton: {
-    position: 'absolute',
-    right: '8px',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    backgroundColor: '#dc2626',
-    border: 'none',
-    borderRadius: '50%',
-    width: '32px',
-    height: '32px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    color: 'white'
+  position: 'absolute',
+  right: '8px',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  backgroundColor: '#d43a3aff',
+  border: 'none',
+  borderRadius: '20px',
+  padding: '6px 16px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  color: 'white',
+  fontSize: '14px',
+  fontWeight: '500'
   },
+
   userProfile: {
     display: 'flex',
     alignItems: 'center',
@@ -401,52 +405,20 @@ const styles = {
 };
 
 const AdminLibrary = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [hoveredNavItem, setHoveredNavItem] = useState(null);
   const [hoveredLogout, setHoveredLogout] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showPromoteModal, setShowPromoteModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [hoveredBook, setHoveredBook] = useState(null);
-  const [selectedMember, setSelectedMember] = useState(null);
   const [books, setBooks] = useState([]);
-  const [members, setMembers] = useState([
-    {
-      id: 1,
-      name: 'Nguyễn Văn A',
-      email: 'nguyenvana@student.edu.vn',
-      phone: '0123456789',
-      role: 'user',
-      joinDate: '2023-09-01',
-      booksCount: 5
-    },
-    {
-      id: 2,
-      name: 'Trần Thị B',
-      email: 'tranthib@student.edu.vn',
-      phone: '0123456790',
-      role: 'user',
-      joinDate: '2023-08-15',
-      booksCount: 3
-    },
-    {
-      id: 3,
-      name: 'Lê Văn C',
-      email: 'levanc@student.edu.vn',
-      phone: '0123456791',
-      role: 'librarian',
-      joinDate: '2023-07-01',
-      booksCount: 8
-    },
-    {
-      id: 4,
-      name: 'Phạm Thị D',
-      email: 'phamthid@student.edu.vn',
-      phone: '0123456792',
-      role: 'user',
-      joinDate: '2023-09-10',
-      booksCount: 2
-    }
-  ]);
+  const [users, setUsers] = useState([]);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [showPromoteModal, setShowPromoteModal] = useState(false);
+  const navigate = useNavigate(); 
+  const [hoveredSearch, setHoveredSearch] = useState(false);
+
+
+
 
   const handleBookClick = (book) => {
     alert(`Chi tiết sách: "${book.title}" - ${book.author}\nTrạng thái: ${getStatusText(book.status)}`);
@@ -461,26 +433,30 @@ const AdminLibrary = () => {
     'linear-gradient(135deg, #fdcb6e, #e17055)'
   ];
 
-  useEffect(() => {
+useEffect(() => {
   getBooks()
     .then(res => {
       const data = res.data;
-
       const mappedBooks = data.map((book, index) => ({
         id: book.id,
         title: book.title,
         author: book.author,
-        color: bookColors[index % bookColors.length], // màu đẹp
+        color: bookColors[index % bookColors.length],
         status: book.available_copies > 0 ? "available" : "borrowed",
         image: book.image
       }));
-
       setBooks(mappedBooks);
     })
-    .catch(err => {
-      console.error("Lỗi khi lấy sách:", err);
-    });
+    .catch(err => console.error("❌ Lỗi khi lấy sách:", err));
+
+  getAllUsers()
+    .then(res => {
+      console.log("✅ Dữ liệu user:", res.data);
+      setUsers(res.data);
+    })
+    .catch(err => console.error("❌ Lỗi khi lấy user:", err));
 }, []);
+
 
 
   const navItems = [
@@ -489,51 +465,86 @@ const AdminLibrary = () => {
     { id: 'notifications', label: 'Thông báo', icon: Bell }
   ];
 
-  const handleLogout = () => {
-    alert('Chuyển về trang login.jsx');
-  };
+ const handleLogout = () => {
+    // Xóa token/session nếu có
+    localStorage.removeItem("token");
+
+    // Chuyển hướng về trang đăng nhập
+    navigate("/");
+  }
+const handleSearch = (e) => {
+  e.preventDefault();
+  console.log("🔍 Đang tìm kiếm:", searchTerm);
+  // Ở đây bạn có thể thêm hành động cụ thể — ví dụ gọi API nếu muốn.
+};
 
   const handlePromoteMember = (member) => {
     setSelectedMember(member);
     setShowPromoteModal(true);
   };
 
-  const confirmPromote = () => {
-    setMembers(prevMembers =>
-      prevMembers.map(member =>
-        member.id === selectedMember.id
-          ? { ...member, role: 'librarian' }
-          : member
-      )
-    );
+const confirmPromote = async () => {
+  try {
+    await promoteUser(selectedMember.id);
+    alert(`${selectedMember.username} đã được thăng cấp thành công!`);
     setShowPromoteModal(false);
     setSelectedMember(null);
-    alert(`${selectedMember.name} đã được thăng cấp thành Thủ thư!`);
-  };
+    const res = await getAllUsers();
+    setUsers(res.data);
+  } catch (err) {
+    console.error(err);
+    alert("Không thể thăng cấp người dùng!");
+  }
+};
+
+const handleDeleteUser = async (id, username) => {
+  if (!window.confirm(`Bạn có chắc chắn muốn xóa ${username}?`)) return;
+
+  try {
+    await deleteUser(id);
+    alert(`✅ Đã xóa thành viên "${username}" thành công!`);
+    const res = await getAllUsers();
+    setUsers(res.data);
+  } catch (err) {
+    console.error("❌ Lỗi khi xóa người dùng:", err.response?.data || err);
+    alert("Không thể xóa người dùng!");
+  }
+};
+
+
 
   const cancelPromote = () => {
     setShowPromoteModal(false);
     setSelectedMember(null);
   };
+const normalizeRole = (role) => {
+  if (!role) return "user";
+  const v = String(role).toUpperCase();
+  if (v === "MEMBER") return "user";
+  if (v === "LIBRARIAN") return "librarian";
+  if (v === "ADMIN") return "admin";
+  return v.toLowerCase();
+};
 
-  const getRoleStyle = (role) => {
-    const baseStyle = styles.roleTag;
-    switch (role) {
-      case 'user': return { ...baseStyle, ...styles.roleUser };
-      case 'librarian': return { ...baseStyle, ...styles.roleLibrarian };
-      case 'admin': return { ...baseStyle, ...styles.roleAdmin };
-      default: return baseStyle;
-    }
-  };
+const getRoleStyle = (role) => {
+  const base = styles.roleTag;
+  switch (normalizeRole(role)) {
+    case 'user': return { ...base, ...styles.roleUser };
+    case 'librarian': return { ...base, ...styles.roleLibrarian };
+    case 'admin': return { ...base, ...styles.roleAdmin };
+    default: return base;
+  }
+};
 
-  const getRoleText = (role) => {
-    switch (role) {
-      case 'user': return 'Thành viên';
-      case 'librarian': return 'Thủ thư';
-      case 'admin': return 'Quản trị viên';
-      default: return role;
-    }
-  };
+const getRoleText = (role) => {
+  switch (normalizeRole(role)) {
+    case 'user': return 'Thành viên';
+    case 'librarian': return 'Thủ thư';
+    case 'admin': return 'Quản trị viên';
+    default: return role;
+  }
+};
+
 
   const getStatusStyle = (status) => {
     const baseStyle = styles.bookStatus;
@@ -552,10 +563,11 @@ const AdminLibrary = () => {
     }
   };
 
-  const filteredMembers = members.filter(member =>
-    member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+ const filteredUsers = (users || []).filter(u =>
+  (u?.username ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+  (u?.email ?? "").toLowerCase().includes(searchTerm.toLowerCase())
+);
+
 
   const filteredBooks = books.filter(book =>
     book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -580,11 +592,11 @@ const AdminLibrary = () => {
                 <div style={styles.statLabel}>Sách đã mượn</div>
               </div>
               <div style={styles.statCard}>
-                <div style={styles.statNumber}>{members.length}</div>
+                <div style={styles.statNumber}>{users.length}</div>
                 <div style={styles.statLabel}>Tổng thành viên</div>
               </div>
               <div style={styles.statCard}>
-                <div style={styles.statNumber}>{members.filter(member => member.role === 'librarian').length}</div>
+                <div style={styles.statNumber}>{users.filter(u => normalizeRole(u.role) === 'librarian').length}</div>
                 <div style={styles.statLabel}>Thủ thư</div>
               </div>
             </div>
@@ -636,54 +648,128 @@ const AdminLibrary = () => {
           </>
         );
 
-      case 'members':
-        return (
-          <>
-            <h1 style={styles.pageTitle}>Quản lý thành viên</h1>
-            {searchTerm && (
-              <div style={{ marginBottom: '24px', fontSize: '16px', color: '#6b7280' }}>
-                Kết quả tìm kiếm: "{searchTerm}" ({filteredMembers.length} kết quả)
+case 'members':
+  return (
+    <>
+      <h1 style={styles.pageTitle}>Quản lý thành viên</h1>
+      {searchTerm && (
+        <div style={{ marginBottom: '24px', fontSize: '16px', color: '#6b7280' }}>
+          Kết quả tìm kiếm: "{searchTerm}" ({filteredUsers.length} kết quả)
+        </div>
+      )}
+
+      <div
+        style={{
+          ...styles.membersTable,
+          borderRadius: "20px",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            ...styles.tableHeader,
+            gridTemplateColumns: "80px 1.5fr 2fr 150px 120px",
+            backgroundColor: "#f1f5f9",
+            borderBottom: "2px solid #e5e7eb",
+          }}
+        >
+          <div>Avatar</div>
+          <div>Tên người dùng</div>
+          <div>Email</div>
+          <div>Vai trò</div>
+          <div>Thao tác</div>
+        </div>
+
+        {/* User Rows */}
+        {filteredUsers.length === 0 ? (
+          <div style={{ padding: "30px", textAlign: "center", color: "#6b7280" }}>
+            Không có thành viên nào.
+          </div>
+        ) : (
+          filteredUsers.map((u, index) => (
+            <div
+              key={u.id || index}
+              style={{
+                ...styles.tableRow,
+                gridTemplateColumns: "80px 1.5fr 2fr 150px 120px",
+                backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb",
+                transition: "background 0.2s ease",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor = "#f3f4f6")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor =
+                  index % 2 === 0 ? "#ffffff" : "#f9fafb")
+              }
+            >
+              {/* Avatar */}
+              <div style={styles.memberAvatar}>
+                {(u.username?.[0] ?? "?").toUpperCase()}
               </div>
-            )}
-            <div style={styles.membersTable}>
-              <div style={styles.tableHeader}>
-                <div>Avatar</div>
-                <div>Họ tên</div>
-                <div>Email</div>
-                <div>Số điện thoại</div>
-                <div>Vai trò</div>
-                <div>Thao tác</div>
+
+              {/* Username */}
+              <div style={{ fontWeight: "600", color: "#111827" }}>
+                {u.username}
               </div>
-              
-              {filteredMembers.map(member => (
-                <div key={member.id} style={styles.tableRow}>
-                  <div style={styles.memberAvatar}>
-                    {member.name.charAt(0)}
-                  </div>
-                  <div style={{ fontWeight: '600', color: '#111827' }}>{member.name}</div>
-                  <div style={{ color: '#6b7280' }}>{member.email}</div>
-                  <div>{member.phone}</div>
-                  <div>
-                    <span style={getRoleStyle(member.role)}>
-                      {getRoleText(member.role)}
-                    </span>
-                  </div>
-                  <div>
-                    {member.role === 'user' && (
-                      <button
-                        style={styles.actionButton}
-                        onClick={() => handlePromoteMember(member)}
-                      >
-                        <UserCheck size={12} style={{ marginRight: '4px' }} />
-                        Thăng cấp
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+
+              {/* Email */}
+              <div style={{ color: "#6b7280" }}>{u.email}</div>
+
+              {/* Role */}
+              <div>
+                <span style={getRoleStyle(u.role)}>{getRoleText(u.role)}</span>
+              </div>
+
+              {/* Action */}
+<div style={{ display: "flex", gap: "8px" }}>
+  {u.role === "MEMBER" && (
+    <button
+      style={{
+        ...styles.actionButton,
+        ...styles.promoteButton,
+      }}
+      onMouseEnter={(e) =>
+        (e.target.style.backgroundColor = "#15803d")
+      }
+      onMouseLeave={(e) =>
+        (e.target.style.backgroundColor = "#16a34a")
+      }
+      onClick={() => handlePromoteMember(u)}
+    >
+      <UserCheck size={12} style={{ marginRight: "4px" }} />
+      Thăng cấp
+    </button>
+  )}
+
+  {/* Nút xoá người dùng */}
+  <button
+    style={{
+      ...styles.actionButton,
+      backgroundColor: "#dc2626",
+      color: "white",
+    }}
+    onMouseEnter={(e) =>
+      (e.target.style.backgroundColor = "#b91c1c")
+    }
+    onMouseLeave={(e) =>
+      (e.target.style.backgroundColor = "#dc2626")
+    }
+    onClick={() => handleDeleteUser(u.id, u.username)}
+  >
+    <Trash2 size={12} style={{ marginRight: "4px" }} />
+    Xóa
+  </button>
+</div>
+
             </div>
-          </>
-        );
+          ))
+        )}
+      </div>
+    </>
+  );
+
 
       case 'notifications':
         return (
@@ -771,19 +857,21 @@ const AdminLibrary = () => {
         <div style={styles.main}>
           {/* Header */}
           <header style={styles.header}>
-            <div style={styles.searchContainer}>
+<div style={styles.searchContainer}>
               <Search size={20} style={styles.searchIcon} />
               <input
                 type="text"
-                placeholder="Tìm kiếm sách, thành viên..."
+                placeholder="Tìm kiếm sách, tác giả..."
                 style={styles.searchBar}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               />
-              <button style={styles.searchButton}>
+              <button style={styles.searchButton} onClick={handleSearch}>
                 <Search size={16} />
               </button>
             </div>
+
             
             <div style={styles.userProfile}>
               <div style={styles.avatar}>AD</div>
