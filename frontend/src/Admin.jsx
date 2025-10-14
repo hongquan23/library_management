@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Book, Users, Bell, History, Search, BookOpen, Star, X, LogOut, User, Shield, Edit3, Save, Trash2, UserCheck, Crown } from 'lucide-react';
-import { getBooks, getAllUsers, promoteUser } from "./api";
+import { getBooks, getAllUsers, promoteUser, getNotifications } from "./api";
 import { useNavigate } from "react-router-dom";
 
 
@@ -416,6 +416,7 @@ const AdminLibrary = () => {
   const [showPromoteModal, setShowPromoteModal] = useState(false);
   const navigate = useNavigate(); 
   const [hoveredSearch, setHoveredSearch] = useState(false);
+const [borrowedCount, setBorrowedCount] = useState(0);
 
 
 
@@ -455,6 +456,22 @@ useEffect(() => {
       setUsers(res.data);
     })
     .catch(err => console.error("❌ Lỗi khi lấy user:", err));
+    getNotifications()
+  .then(res => {
+    const data = res.data;
+    const borrowEvents = data.filter(n => n.message.includes("mượn sách"));
+    const returnEvents = data.filter(n => n.message.includes("trả sách"));
+
+    // Đếm số sách đang mượn = mượn nhưng chưa trả
+    const borrowed = borrowEvents.filter(b => {
+      const bookTitle = b.message.match(/'(.*?)'/)?.[1];
+      return !returnEvents.some(r => r.message.includes(bookTitle || ""));
+    }).length;
+
+    setBorrowedCount(borrowed);
+  })
+  .catch(err => console.error("❌ Lỗi khi lấy thông báo:", err));
+
 }, []);
 
 
@@ -587,10 +604,10 @@ const getRoleText = (role) => {
                 <div style={styles.statNumber}>{books.length}</div>
                 <div style={styles.statLabel}>Tổng số sách</div>
               </div>
-              <div style={styles.statCard}>
-                <div style={styles.statNumber}>{books.filter(book => book.status === 'borrowed').length}</div>
-                <div style={styles.statLabel}>Sách đã mượn</div>
-              </div>
+            <div style={styles.statCard}>
+              <div style={styles.statNumber}>{borrowedCount}</div>
+              <div style={styles.statLabel}>Sách đã mượn</div>
+            </div>
               <div style={styles.statCard}>
                 <div style={styles.statNumber}>{users.length}</div>
                 <div style={styles.statLabel}>Tổng thành viên</div>
