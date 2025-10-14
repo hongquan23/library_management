@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Home, Bell, History, Book, Search, BookOpen, Users, Calendar, Plus, Star, X, LogOut } from 'lucide-react';
 import { getBooks, createBook, bookApi } from "./api";   
 import { useNavigate } from "react-router-dom";
+import { getNotifications, deleteNotification, getUserById, getUsers } from "./api";
 
 
 const styles = {
@@ -175,26 +176,27 @@ const styles = {
     gap: '24px',
     marginBottom: '40px'
   },
-  statCard: {
-    backgroundColor: '#ffffff',
-    padding: '24px 20px',
-    borderRadius: '16px',
-    border: '2px solid #e5e7eb',
-    transition: 'all 0.2s ease',
-    textAlign: 'center',
-    minHeight: '120px',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  statNumber: {
-    fontSize: '32px',
-    fontWeight: '700',
-    color: '#6366f1',
-    marginBottom: '8px',
-    lineHeight: '1.2'
-  },
+statNumber: {
+  fontSize: '32px',
+  fontWeight: '700',
+  color: '#1e3a8a', // đậm, dễ thấy hơn
+  marginBottom: '8px',
+  lineHeight: '1.2'
+},
+statCard: {
+  backgroundColor: '#ffffff', // ✅ trắng, nên chữ tím nổi bật
+  padding: '24px 20px',
+  borderRadius: '16px',
+  border: '2px solid #e5e7eb',
+  transition: 'all 0.2s ease',
+  textAlign: 'center',
+  minHeight: '120px',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+  alignItems: 'center'
+},
+
   statLabel: {
     fontSize: '14px',
     color: '#6b7280',
@@ -407,18 +409,19 @@ const styles = {
     textAlign: 'center',
     flex: 1
   },
-  statNumber: {
-    fontSize: '24px',
-    fontWeight: '700',
-    color: 'white',
-    marginBottom: '4px'
-  },
-  statLabel: {
-    fontSize: '12px',
-    color: 'rgba(255, 255, 255, 0.7)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px'
-  },
+ modalStatNumber: {
+  fontSize: '24px',
+  fontWeight: '700',
+  color: 'white',
+  marginBottom: '4px'
+},
+modalStatLabel: {
+  fontSize: '12px',
+  color: 'rgba(255, 255, 255, 0.7)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px'
+},
+
   description: {
     fontSize: '14px',
     lineHeight: '1.6',
@@ -558,7 +561,14 @@ const Librarian = () => {
 
   // 🆕 Thêm state cho dữ liệu động
   const [books, setBooks] = useState([]);
+const [notifications, setNotifications] = useState([]);
+const [borrowHistory, setBorrowHistory] = useState([]);
+const [totalBooks, setTotalBooks] = useState(0);
+const [borrowedBooks, setBorrowedBooks] = useState(0);
+const [overdueBooks, setOverdueBooks] = useState(0);
 
+// 👥 Tổng người dùng
+const [totalUsers, setTotalUsers] = useState(0);
 
   const bookColors = [
     'linear-gradient(135deg, #ff6b9d, #f06292)',
@@ -567,44 +577,220 @@ const Librarian = () => {
     'linear-gradient(135deg, #74b9ff, #0984e3)'
   ];
 
-
+// --- Lấy danh sách sách ---
 React.useEffect(() => {
   getBooks()
     .then(res => {
       const data = res.data;
+
+      // ⚠️ Log thử dữ liệu để kiểm tra
+      console.log("📚 Dữ liệu sách nhận được:", data);
 
       const mappedBooks = data.map((book, index) => ({
         id: book.id,
         title: book.title,
         author: book.author,
         color: bookColors[index % bookColors.length],
-        available_copies: book.available_copies,  
+        available_copies: book.available_copies,
         status: book.available_copies > 0 ? "available" : "borrowed",
         description: book.description || `Cuốn sách "${book.title}" của ${book.author}.`,
         image: book.image
       }));
 
       setBooks(mappedBooks);
-    })
-    .catch(err => {
-      console.error("Lỗi khi lấy sách:", err);
-    });
 
+      // ✅ Cập nhật thống kê
+      setTotalBooks(data.length);
+      setBorrowedBooks(data.filter(b => b.available_copies === 0).length);
+      setOverdueBooks(data.filter(b => b.status === "overdue").length || 0);
+    })
+    .catch(err => console.error("❌ Lỗi khi lấy sách:", err));
 }, []);
 
 
-  const notifications = [
-    { id: 1, title: 'Sách quá hạn', desc: '"The Lean Startup" - Người mượn: Nguyễn Văn A', time: '2 giờ trước', type: 'overdue' },
-    { id: 2, title: 'Sách được mượn', desc: '"Atomic Habits" - Người mượn: Trần Thị B', time: '5 giờ trước', type: 'borrowed' },
-    { id: 3, title: 'Sách quá hạn', desc: '"Deep Work" - Người mượn: Lê Văn C', time: '1 ngày trước', type: 'overdue' }
-  ];
+// --- Lấy danh sách thông báo và tự động refresh mỗi 5 giây ---
+React.useEffect(() => {
+  const fetchNotifications = () => {
+    getNotifications()
+      .then(res => {
+        const formatted = res.data.map(n => {
+          const createdAt = new Date(n.created_at);
+          createdAt.setHours(createdAt.getHours() + 7); // 🇻🇳 Chuyển sang giờ VN
 
-  const borrowHistory = [
-    { id: 1, bookTitle: 'Tâm lý học đám đông', borrower: 'Nguyễn Văn A', borrowDate: '15/09/2024', returnDate: '22/09/2024', status: 'Đã trả' },
-    { id: 2, bookTitle: 'Đắc nhân tâm', borrower: 'Trần Thị B', borrowDate: '10/09/2024', returnDate: '', status: 'Đang mượn' },
-    { id: 3, bookTitle: 'Sapiens', borrower: 'Lê Văn C', borrowDate: '05/09/2024', returnDate: '12/09/2024', status: 'Đã trả' },
-    { id: 4, bookTitle: 'Atomic Habits', borrower: 'Phạm Thị D', borrowDate: '01/09/2024', returnDate: '', status: 'Quá hạn' }
-  ];
+          return {
+            id: n.id,
+            title: "Thông báo mượn sách",
+            desc: n.message || "Không có nội dung",
+            time: createdAt.toLocaleString("vi-VN"),
+          };
+        });
+
+        setNotifications(formatted);
+      })
+      .catch(err => console.error("❌ Lỗi khi lấy thông báo:", err));
+  };
+
+  // 🔄 Gọi lần đầu khi load
+  fetchNotifications();
+
+  // ⏱️ Tự động refresh mỗi 5 giây
+  const interval = setInterval(fetchNotifications, 5000);
+
+  // 🧹 Dọn khi rời trang
+  return () => clearInterval(interval);
+}, []);
+
+// --- Tính thống kê mượn / trả / quá hạn từ notifications ---
+React.useEffect(() => {
+  const fetchStatsFromNotifications = () => {
+    getNotifications()
+      .then(res => {
+        const notifications = res.data;
+        const today = new Date();
+
+        // ✅ Lọc thông báo mượn & trả
+        const borrowEvents = notifications.filter(n =>
+          n.message.includes("mượn sách")
+        );
+        const returnEvents = notifications.filter(n =>
+          n.message.includes("trả sách")
+        );
+
+        // --- Đếm sách đang mượn ---
+        const borrowedSet = new Set();
+        borrowEvents.forEach(b => {
+          const bookMatch = b.message.match(/'(.*?)'/);
+          const bookTitle = bookMatch ? bookMatch[1] : null;
+          if (bookTitle) borrowedSet.add(bookTitle);
+        });
+        returnEvents.forEach(r => {
+          const bookMatch = r.message.match(/'(.*?)'/);
+          const bookTitle = bookMatch ? bookMatch[1] : null;
+          if (bookTitle) borrowedSet.delete(bookTitle);
+        });
+
+        // --- Mượn nhưng chưa trả ---
+const borrowedCount = borrowEvents.filter(b => {
+  const title = b.message.match(/'(.*?)'/)?.[1];
+  // Kiểm tra nếu không có thông báo trả tương ứng
+  return !returnEvents.some(r => r.message.includes(title || ""));
+}).length;
+
+
+        // --- Đếm sách quá hạn ---
+        const overdueCount = borrowEvents.filter(b => {
+          const borrowDate = new Date(b.created_at);
+          const dueDate = new Date(borrowDate);
+          dueDate.setDate(dueDate.getDate() + 15);
+          return (
+            dueDate < today &&
+            !returnEvents.some(r =>
+              r.message.includes(b.message.match(/'(.*?)'/)?.[1] || "")
+            )
+          );
+        }).length;
+
+        setBorrowedBooks(borrowedCount);
+        setOverdueBooks(overdueCount);
+      })
+      .catch(err => console.error("❌ Lỗi khi tính thống kê từ notifications:", err));
+  };
+
+  fetchStatsFromNotifications();
+  const interval = setInterval(fetchStatsFromNotifications, 5000);
+  return () => clearInterval(interval);
+}, []);
+
+
+// 🗑️ Hàm xóa thông báo
+const handleDeleteNotification = async (id) => {
+  if (!window.confirm("Bạn có chắc muốn xóa thông báo này không?")) return;
+
+  try {
+    await deleteNotification(id);
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    alert("🗑️ Đã xóa thông báo thành công!");
+  } catch (err) {
+    console.error("❌ Lỗi khi xóa thông báo:", err);
+    alert("Không thể xóa thông báo. Vui lòng thử lại!");
+  }
+};
+// 📚 Lấy dữ liệu lịch sử mượn từ notifications (refresh mỗi 5s)
+React.useEffect(() => {
+  const fetchHistory = async () => {
+    try {
+      const res = await getNotifications();
+      const rawData = res.data;
+
+      const historyData = await Promise.all(
+        rawData.map(async (item) => {
+          // ✅ Ngày mượn
+          const createdAt = new Date(item.created_at);
+          createdAt.setHours(createdAt.getHours() + 7);
+
+          // ✅ Lấy tên sách
+          const bookTitleMatch = item.message.match(/'(.*?)'/);
+          const bookTitle = bookTitleMatch ? bookTitleMatch[1] : "Không rõ";
+
+          // ✅ Hạn trả
+          const borrowDate = createdAt;
+          const dueDate = new Date(borrowDate);
+          dueDate.setDate(dueDate.getDate() + 15);
+
+          // ✅ Trạng thái
+          let status = "Khác";
+          if (item.message.includes("mượn sách")) status = "Đang mượn";
+          if (item.message.includes("trả sách")) status = "Đã trả";
+
+          // ✅ Lấy tên người dùng thật từ user-service
+          let borrowerName = "Độc giả";
+          if (item.user_id) {
+            try {
+              const userRes = await getUserById(item.user_id);
+              borrowerName = userRes.data.full_name || userRes.data.username || "Không xác định";
+            } catch {
+              borrowerName = "Không xác định";
+            }
+          } else if (item.user_name) {
+            borrowerName = item.user_name;
+          }
+
+          return {
+            id: item.id,
+            bookTitle,
+            borrower: borrowerName,
+            borrowDate: borrowDate.toLocaleString("vi-VN"),
+            dueDate: dueDate.toLocaleDateString("vi-VN"),
+            status,
+          };
+        })
+      );
+
+      setBorrowHistory(historyData);
+    } catch (err) {
+      console.error("❌ Lỗi khi lấy lịch sử từ notifications:", err);
+    }
+  };
+
+  fetchHistory();
+  const interval = setInterval(fetchHistory, 5000);
+  return () => clearInterval(interval);
+}, []);
+ 
+
+React.useEffect(() => {
+  getUsers()
+    .then(res => {
+      // Giữ lại những user có role là MEMBER
+      const members = res.data.filter(user =>
+        user.role && user.role.toUpperCase() === "MEMBER"
+      );
+      setTotalUsers(members.length);
+    })
+    .catch(err => console.error("❌ Lỗi khi lấy người dùng:", err));
+}, []);
+
+
 
   const navItems = [
     { id: 'home', label: 'Trang chủ', icon: Home },
@@ -731,22 +917,23 @@ const handleSearch = (e) => {
             {/* Statistics Cards */}
             <div style={styles.statsGrid}>
               <div style={styles.statCard}>
-                <div style={{...styles.statNumber}}>1,247</div>
-                <div style={{...styles.statLabel}}>Tổng số sách</div>
+                <div style={styles.statNumber}>{totalBooks}</div>
+                <div style={styles.statLabel}>Tổng số sách</div>
               </div>
               <div style={styles.statCard}>
-                <div style={{...styles.statNumber}}>156</div>
-                <div style={{...styles.statLabel}}>Sách đã mượn</div>
+                <div style={styles.statNumber}>{borrowedBooks}</div>
+                <div style={styles.statLabel}>Sách đã mượn</div>
               </div>
               <div style={styles.statCard}>
-                <div style={{...styles.statNumber}}>23</div>
-                <div style={{...styles.statLabel}}>Sách quá hạn</div>
+                <div style={styles.statNumber}>{overdueBooks}</div>
+                <div style={styles.statLabel}>Sách quá hạn</div>
               </div>
               <div style={styles.statCard}>
-                <div style={{...styles.statNumber}}>89</div>
-                <div style={{...styles.statLabel}}>Độc giả hoạt động</div>
+                <div style={styles.statNumber}>{totalUsers}</div>
+                <div style={styles.statLabel}>Tổng người dùng</div>
               </div>
             </div>
+
 
             {/* Popular Books */}
 <div style={styles.sectionTitle}>Thư viện sách</div>
@@ -788,48 +975,87 @@ const handleSearch = (e) => {
       case 'notifications':
         return (
           <>
-            <h1 style={styles.pageTitle}>Thông báo</h1>
-            
-            {notifications.map(notification => (
-              <div key={notification.id} style={styles.notificationItem}>
-                <div style={styles.notificationTitle}>{notification.title}</div>
-                <div style={styles.notificationDesc}>{notification.desc}</div>
-                <div style={styles.notificationTime}>{notification.time}</div>
-              </div>
-            ))}
+<h1 style={styles.pageTitle}>Thông báo</h1>
+
+{notifications.length === 0 ? (
+  <p style={{ color: "#6b7280", fontStyle: "italic" }}>Không có thông báo nào.</p>
+) : (
+  notifications.map((notification) => (
+    <div
+      key={notification.id}
+      style={{
+        ...styles.notificationItem,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
+    >
+      <div>
+        <div style={styles.notificationTitle}>{notification.title}</div>
+        <div style={styles.notificationDesc}>{notification.desc}</div>
+        <div style={styles.notificationTime}>{notification.time}</div>
+      </div>
+
+      {/* 🗑️ Nút xóa */}
+      <button
+        onClick={() => handleDeleteNotification(notification.id)}
+        style={{
+          backgroundColor: "transparent",
+          border: "1px solid #ef4444",
+          color: "#ef4444",
+          borderRadius: "8px",
+          padding: "8px 12px",
+          cursor: "pointer",
+          fontWeight: "600",
+          transition: "all 0.2s ease",
+        }}
+        onMouseEnter={(e) => (e.target.style.backgroundColor = "#fee2e2")}
+        onMouseLeave={(e) => (e.target.style.backgroundColor = "transparent")}
+      >
+        Xóa
+      </button>
+    </div>
+  ))
+)}
+
           </>
         );
 
-      case 'history':
-        return (
-          <>
-            <h1 style={styles.pageTitle}>Lịch sử mượn trả sách</h1>
-            
-            <div style={styles.historyTable}>
-              <div style={styles.tableHeader}>
-                <div>Tên sách</div>
-                <div>Người mượn</div>
-                <div>Ngày mượn</div>
-                <div>Ngày trả</div>
-                <div>Trạng thái</div>
+case 'history':
+  return (
+    <>
+      <h1 style={styles.pageTitle}>Lịch sử mượn trả sách</h1>
+
+      <div style={styles.historyTable}>
+        <div style={styles.tableHeader}>
+          <div>Tên sách</div>
+          <div>Người mượn</div>
+          <div>Ngày mượn</div>
+          <div>Hạn trả</div>
+          <div>Trạng thái</div>
+        </div>
+
+        {borrowHistory.length === 0 ? (
+          <div style={{ padding: "20px", textAlign: "center", color: "#6b7280" }}>
+            Chưa có lịch sử mượn sách
+          </div>
+        ) : (
+          borrowHistory.map(record => (
+            <div key={record.id} style={styles.tableRow}>
+              <div style={{ fontWeight: '600', color: '#111827' }}>{record.bookTitle}</div>
+              <div>{record.borrower}</div>
+              <div>{record.borrowDate}</div>
+              <div>{record.dueDate}</div>
+              <div>
+                <span style={getStatusStyle(record.status)}>{record.status}</span>
               </div>
-              
-              {borrowHistory.map(record => (
-                <div key={record.id} style={styles.tableRow}>
-                  <div style={{ fontWeight: '600', color: '#111827' }}>{record.bookTitle}</div>
-                  <div>{record.borrower}</div>
-                  <div>{record.borrowDate}</div>
-                  <div>{record.returnDate || 'Chưa trả'}</div>
-                  <div>
-                    <span style={getStatusStyle(record.status)}>
-                      {record.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
             </div>
-          </>
-        );
+          ))
+        )}
+      </div>
+    </>
+  );
+
 
       case 'add-book':
         return (
@@ -947,7 +1173,10 @@ const handleSearch = (e) => {
             <div style={styles.userProfile}>
               <div style={styles.notificationIcon}>
                 <Bell size={24} color="#6b7280" />
-                <div style={styles.notificationBadge}>3</div>
+                {notifications.length > 0 && (
+   <div style={styles.notificationBadge}>{notifications.length}</div>
+)}
+
               </div>
               <div style={styles.avatar}>NV</div>
             </div>

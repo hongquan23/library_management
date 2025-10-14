@@ -39,6 +39,8 @@ export const deleteBook = (id) => bookApi.delete(`/books/${id}`);
 export const getAllUsers = () => userApi.get("/users");
 export const promoteUser = (userId) => userApi.put(`/users/${userId}/promote`);
 export const deleteUser = (userId) => userApi.delete(`/users/${userId}`);
+export const getUserById = (userId) => userApi.get(`/api/users/${userId}`);
+export const getUsers = () => userApi.get("/users");
 
 
 export const getBorrows = () => borrowApi.get("/borrow");
@@ -47,3 +49,6 @@ export const createBorrow = (data) => borrowApi.post("/borrow", data);
 export const returnBorrow = (id, data) => borrowApi.put(`/borrow/return/${id}`, data);
 export const deleteBorrow = (id) => borrowApi.delete(`/borrow/${id}`);
 
+
+export const getNotifications = () => notificationApi.get("/notifications");
+export const deleteNotification = (id) => notificationApi.delete(`/notifications/${id}`);

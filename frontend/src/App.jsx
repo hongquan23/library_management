@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Bell, History, Book, Search, BookOpen, Star, X, LogOut, Trash2, User, Settings, ChevronDown } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
-import { getBooks,createBorrow } from "./api";
+import { getBooks,createBorrow,getNotifications } from "./api";
 
 // CSS Modules styles (inline for demonstration)
 const styles = {
@@ -524,31 +524,72 @@ const UserLibrary = () => {
 
   // Initialize data on component mount
 React.useEffect(() => {
+  // --- Lấy sách ---
   getBooks()
     .then(res => {
       const data = res.data;
-
-      // Map dữ liệu DB sang format UI đang dùng
       const mappedBooks = data.map((book, index) => ({
         id: book.id,
         title: book.title,
         author: book.author,
-        color: bookColors[index % bookColors.length], // lấy màu từ mảng có sẵn
-        available_copies: book.available_copies, 
+        color: bookColors[index % bookColors.length],
+        available_copies: book.available_copies,
         status: book.available_copies > 0 ? "available" : "borrowed",
-        description: `Cuốn sách "${book.title}" của ${book.author}, xuất bản năm ${book.published_year}.`,
+        description: `Cuốn sách "${book.title}" của ${book.author}.`,
         image: book.image
       }));
-
       setBooks(mappedBooks);
     })
-    .catch(err => {
-      console.error("Lỗi khi lấy sách:", err);
+    .catch(err => console.error("❌ Lỗi khi lấy sách:", err));
+
+getNotifications()
+  .then(res => {
+    // Dữ liệu gốc từ backend (chưa map)
+    const rawData = res.data;
+const notificationsData = rawData.map(n => ({
+  id: n.id,
+  title: "Thông báo mượn sách", // hoặc để trống nếu muốn
+  desc: n.message || "Không có nội dung",
+  time: new Date(n.created_at).toLocaleString("vi-VN"),
+}));
+setNotifications(notificationsData);
+
+
+    // Dữ liệu cho "Lịch sử mượn trả"
+    const historyData = rawData.map(item => {
+      let status = "Khác";
+      if (item.message.includes("mượn sách")) status = "Đang mượn";
+      if (item.message.includes("trả sách")) status = "Đã trả";
+
+      const bookTitleMatch = item.message.match(/'(.*?)'/);
+      const bookTitle = bookTitleMatch ? bookTitleMatch[1] : "Không rõ";
+
+      const borrowDate = new Date(item.created_at);
+      borrowDate.setHours(borrowDate.getHours() + 7); // 🇻🇳 Chuyển sang giờ Việt Nam
+
+      if (isNaN(borrowDate)) {
+        console.warn("⚠️ Ngày không hợp lệ:", item.created_at);
+      }
+
+      const dueDate = new Date(borrowDate);
+      dueDate.setDate(borrowDate.getDate() + 15);
+
+      return {
+        id: item.id,
+        bookTitle,
+        borrowDate: borrowDate.toLocaleString("vi-VN"),
+        dueDate: dueDate.toLocaleDateString("vi-VN"),
+        status
+      };
     });
 
-  setNotifications([]);
-  setBorrowHistory([]);
+    setBorrowHistory(historyData);
+  })
+  .catch(err => console.error("❌ Lỗi khi lấy thông báo:", err));
+
 }, []);
+
+
 
 
   const navItems = [
@@ -670,6 +711,41 @@ const handleBorrowBook = async () => {
 
     console.log("🎉 MƯỢN SÁCH THÀNH CÔNG!");
     alert(`Đã mượn sách "${selectedBook.title}" thành công!`);
+// 🟢 Gọi lại API để cập nhật thông báo và lịch sử ngay
+try {
+  const res = await getNotifications();
+  const rawData = res.data;
+
+  // 🧩 Cập nhật danh sách thông báo
+  const notificationsData = rawData.map(n => ({
+    id: n.id,
+    title: "Thông báo mượn sách",
+    desc: n.message || "Không có nội dung",
+    time: new Date(n.created_at).toLocaleString("vi-VN"),
+  }));
+  setNotifications(notificationsData);
+
+  // 🧩 Cập nhật danh sách lịch sử mượn (hạn trả = +15 ngày)
+  const historyData = rawData.map(item => {
+    const borrowDate = new Date(item.created_at);
+    borrowDate.setHours(borrowDate.getHours() + 7); // 🇻🇳 Chuyển sang giờ Việt Nam
+    const dueDate = new Date(borrowDate);
+    dueDate.setDate(borrowDate.getDate() + 15);
+
+    return {
+      id: item.id,
+      bookTitle: item.message.match(/'(.*?)'/)?.[1] || "Không rõ tên sách",
+      borrowDate: borrowDate.toLocaleString("vi-VN"),
+      dueDate: dueDate.toLocaleDateString("vi-VN"),
+      status: item.message.includes("mượn sách") ? "Đang mượn" : "Đã trả",
+    };
+  });
+  setBorrowHistory(historyData);
+
+  console.log("🔄 Đã cập nhật lại thông báo & lịch sử!");
+} catch (error) {
+  console.error("❌ Lỗi khi cập nhật thông báo/lịch sử:", error);
+}
 
   } catch (error) {
     console.error("💥 === LỖI CHI TIẾT ===");
@@ -985,11 +1061,16 @@ const handleBorrowBook = async () => {
               </button>
             </div>
             
-            <div style={styles.userProfile}>
-              <div style={styles.notificationIcon}>
-                <Bell size={24} color="#6b7280" />
-                <div style={styles.notificationBadge}>1</div>
+                      <div style={styles.userProfile}>
+          <div style={styles.notificationIcon}>
+            <Bell size={24} color="#6b7280" />
+            {notifications.length > 0 && (
+              <div style={styles.notificationBadge}>
+                {notifications.length}
               </div>
+            )}
+          </div>
+
               <div style={styles.avatar}>A</div>
             </div>
           </header>
