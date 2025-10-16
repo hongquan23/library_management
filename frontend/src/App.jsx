@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Bell, History, Book, Search, BookOpen, Star, X, LogOut, Trash2, User, Settings, ChevronDown } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
-import { getBooks,createBorrow,getNotificationsByUser,deleteNotification } from "./api";
+import { getBooks,createBorrow,getNotificationsByUser,deleteNotification,deleteBorrow } from "./api";
 
 // CSS Modules styles (inline for demonstration)
 const styles = {
@@ -653,11 +653,18 @@ const handleDeleteNotification = async (notificationId) => {
   }
 };
 
-  const handleDeleteHistory = (historyId) => {
-    setBorrowHistory(prevHistory => 
-      prevHistory.filter(history => history.id !== historyId)
-    );
-  };
+  const handleDeleteHistory = async (historyId) => {
+  if (!window.confirm("Bạn có chắc muốn xóa lịch sử này không?")) return;
+  try {
+    await deleteNotification(historyId); // 👈 đổi từ deleteBorrow → deleteNotification
+    setBorrowHistory(prev => prev.filter(h => h.id !== historyId));
+    alert("✅ Xóa lịch sử thành công!");
+  } catch (err) {
+    console.error("❌ Lỗi khi xóa lịch sử:", err);
+    alert("Không thể xóa lịch sử!");
+  }
+};
+
 
   const handleProfileClick = () => {
     setShowProfileDropdown(!showProfileDropdown);

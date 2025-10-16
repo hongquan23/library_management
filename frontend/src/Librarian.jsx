@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Home, Bell, History, Book, Search, BookOpen, Users, Calendar, Plus, Star, X, LogOut } from 'lucide-react';
 import { getBooks, createBook, bookApi } from "./api";   
 import { useNavigate } from "react-router-dom";
-import { getNotifications, deleteNotification, getUserById, getUsers } from "./api";
+import { getNotifications, deleteNotification, getUserById, getUsers,deleteBook } from "./api";
 
 
 const styles = {
@@ -1243,10 +1243,34 @@ case 'history':
               <div style={styles.description}>
                 {selectedBook.description}
               </div>  
-              <button style={styles.readButton}>
-                <BookOpen size={16} />
-                Read Now
-              </button>
+                <button
+                  style={{
+                    ...styles.readButton,
+                    background: "linear-gradient(135deg, #ef4444, #dc2626)", // đỏ cảnh báo
+                  }}
+                  onClick={async () => {
+                    if (!window.confirm(`Bạn có chắc muốn xóa sách "${selectedBook.title}" không?`)) return;
+
+                    try {
+                      // 🗑️ Gọi API backend thật
+                      await deleteBook(selectedBook.id);
+
+                      alert(`🗑️ Đã xóa sách "${selectedBook.title}" thành công!`);
+
+                      // 🔁 Cập nhật danh sách hiển thị
+                      setBooks((prev) => prev.filter((b) => b.id !== selectedBook.id));
+
+                      // Đóng modal
+                      setSelectedBook(null);
+                    } catch (err) {
+                      console.error("❌ Lỗi khi xóa sách:", err);
+                      alert("Không thể xóa sách. Vui lòng thử lại!");
+                    }
+                  }}
+                >
+                  🗑️ Xóa sách
+                </button>
+
             </div>
           </div>
         )}
