@@ -44,3 +44,12 @@ def promote_user(user_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     return {"message": "Thăng cấp thành công", "new_role": user.role.value}
+
+
+# ✅ Lấy thông tin user theo ID
+@router.get("/{user_id}", response_model=UserResponse)
+def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
+    return user

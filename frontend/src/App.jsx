@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Bell, History, Book, Search, BookOpen, Star, X, LogOut, Trash2, User, Settings, ChevronDown } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
-import { getBooks,createBorrow,getNotifications } from "./api";
+import { getBooks,createBorrow,getNotificationsByUser,deleteNotification } from "./api";
 
 // CSS Modules styles (inline for demonstration)
 const styles = {
@@ -524,6 +524,11 @@ const UserLibrary = () => {
 
   // Initialize data on component mount
 React.useEffect(() => {
+   const currentUser = JSON.parse(localStorage.getItem("user"));
+  if (!currentUser) {
+    alert("Chưa đăng nhập!");
+    return;
+  }
   // --- Lấy sách ---
   getBooks()
     .then(res => {
@@ -542,50 +547,42 @@ React.useEffect(() => {
     })
     .catch(err => console.error("❌ Lỗi khi lấy sách:", err));
 
-getNotifications()
-  .then(res => {
-    // Dữ liệu gốc từ backend (chưa map)
-    const rawData = res.data;
-const notificationsData = rawData.map(n => ({
-  id: n.id,
-  title: "Thông báo mượn sách", // hoặc để trống nếu muốn
-  desc: n.message || "Không có nội dung",
-  time: new Date(n.created_at).toLocaleString("vi-VN"),
-}));
-setNotifications(notificationsData);
+getNotificationsByUser(currentUser.id)
+    .then(res => {
+      const rawData = res.data;
+      const notificationsData = rawData.map(n => ({
+        id: n.id,
+        title: "Thông báo mượn sách",
+        desc: n.message || "Không có nội dung",
+        time: new Date(n.created_at).toLocaleString("vi-VN"),
+      }));
+      setNotifications(notificationsData);
 
+      // --- Sinh lịch sử mượn ---
+      const historyData = rawData.map(item => {
+        let status = "Khác";
+        if (item.message.includes("mượn sách")) status = "Đang mượn";
+        if (item.message.includes("trả sách")) status = "Đã trả";
 
-    // Dữ liệu cho "Lịch sử mượn trả"
-    const historyData = rawData.map(item => {
-      let status = "Khác";
-      if (item.message.includes("mượn sách")) status = "Đang mượn";
-      if (item.message.includes("trả sách")) status = "Đã trả";
+        const bookTitleMatch = item.message.match(/'(.*?)'/);
+        const bookTitle = bookTitleMatch ? bookTitleMatch[1] : "Không rõ";
 
-      const bookTitleMatch = item.message.match(/'(.*?)'/);
-      const bookTitle = bookTitleMatch ? bookTitleMatch[1] : "Không rõ";
+        const borrowDate = new Date(item.created_at);
+        borrowDate.setHours(borrowDate.getHours() + 7);
+        const dueDate = new Date(borrowDate);
+        dueDate.setDate(borrowDate.getDate() + 15);
 
-      const borrowDate = new Date(item.created_at);
-      borrowDate.setHours(borrowDate.getHours() + 7); // 🇻🇳 Chuyển sang giờ Việt Nam
-
-      if (isNaN(borrowDate)) {
-        console.warn("⚠️ Ngày không hợp lệ:", item.created_at);
-      }
-
-      const dueDate = new Date(borrowDate);
-      dueDate.setDate(borrowDate.getDate() + 15);
-
-      return {
-        id: item.id,
-        bookTitle,
-        borrowDate: borrowDate.toLocaleString("vi-VN"),
-        dueDate: dueDate.toLocaleDateString("vi-VN"),
-        status
-      };
-    });
-
-    setBorrowHistory(historyData);
-  })
-  .catch(err => console.error("❌ Lỗi khi lấy thông báo:", err));
+        return {
+          id: item.id,
+          bookTitle,
+          borrowDate: borrowDate.toLocaleString("vi-VN"),
+          dueDate: dueDate.toLocaleDateString("vi-VN"),
+          status,
+        };
+      });
+      setBorrowHistory(historyData);
+    })
+    .catch(err => console.error("❌ Lỗi khi lấy thông báo user:", err));
 
 }, []);
 
@@ -618,11 +615,43 @@ setNotifications(notificationsData);
     // Logic tìm kiếm sẽ được thực hiện thông qua filteredBooks
   };
 
-  const handleDeleteNotification = (notificationId) => {
-    setNotifications(prevNotifications => 
-      prevNotifications.filter(notification => notification.id !== notificationId)
-    );
-  };
+
+const handleDeleteNotification = async (notificationId) => {
+  const currentUser = JSON.parse(localStorage.getItem("user"));
+
+  if (!currentUser) {
+    alert("Không xác định người dùng, vui lòng đăng nhập lại!");
+    return;
+  }
+
+  // ✅ Hỏi xác nhận trước khi xóa
+  if (!window.confirm("Bạn có chắc muốn xóa thông báo này không?")) return;
+
+  try {
+    // 🟢 Gọi API backend để xóa
+    await deleteNotification(notificationId);
+    console.log(`🗑️ Đã xóa thông báo ID: ${notificationId}`);
+
+    // 🟢 Sau khi xóa, gọi lại danh sách thông báo mới
+    const res = await getNotificationsByUser(currentUser.id);
+    const rawData = res.data;
+
+    // 🧩 Cập nhật lại state frontend
+    const notificationsData = rawData.map(n => ({
+      id: n.id,
+      title: "Thông báo mượn sách",
+      desc: n.message || "Không có nội dung",
+      time: new Date(n.created_at).toLocaleString("vi-VN"),
+    }));
+    setNotifications(notificationsData);
+
+    alert("✅ Xóa thông báo thành công!");
+  } catch (err) {
+    console.error("❌ Lỗi khi xóa thông báo:", err);
+    const detail = err.response?.data?.detail || "Không thể xóa thông báo.";
+    alert(detail);
+  }
+};
 
   const handleDeleteHistory = (historyId) => {
     setBorrowHistory(prevHistory => 
@@ -713,7 +742,7 @@ const handleBorrowBook = async () => {
     alert(`Đã mượn sách "${selectedBook.title}" thành công!`);
 // 🟢 Gọi lại API để cập nhật thông báo và lịch sử ngay
 try {
-  const res = await getNotifications();
+  const res = await getNotificationsByUser(currentUser.id);
   const rawData = res.data;
 
   // 🧩 Cập nhật danh sách thông báo

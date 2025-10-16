@@ -724,6 +724,9 @@ React.useEffect(() => {
 
       const historyData = await Promise.all(
         rawData.map(async (item) => {
+          // 🧩 Khai báo tên người mượn trước khi dùng
+          let borrowerName = "Không xác định";
+
           // ✅ Ngày mượn
           const createdAt = new Date(item.created_at);
           createdAt.setHours(createdAt.getHours() + 7);
@@ -742,17 +745,17 @@ React.useEffect(() => {
           if (item.message.includes("mượn sách")) status = "Đang mượn";
           if (item.message.includes("trả sách")) status = "Đã trả";
 
-          // ✅ Lấy tên người dùng thật từ user-service
-          let borrowerName = "Độc giả";
-          if (item.user_id) {
-            try {
-              const userRes = await getUserById(item.user_id);
-              borrowerName = userRes.data.full_name || userRes.data.username || "Không xác định";
-            } catch {
-              borrowerName = "Không xác định";
+          // 🧩 Lấy tên người mượn từ user-service
+          try {
+            if (item.user_id) {
+              const resUser = await getUserById(item.user_id);
+              borrowerName =
+                resUser.data.full_name ||
+                resUser.data.username ||
+                "Không xác định";
             }
-          } else if (item.user_name) {
-            borrowerName = item.user_name;
+          } catch (err) {
+            console.warn("⚠️ Lỗi khi lấy tên người dùng:", err);
           }
 
           return {
@@ -776,7 +779,7 @@ React.useEffect(() => {
   const interval = setInterval(fetchHistory, 5000);
   return () => clearInterval(interval);
 }, []);
- 
+
 
 React.useEffect(() => {
   getUsers()
